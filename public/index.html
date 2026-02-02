@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Momentum Ranking Engine</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .input-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+        }
+
+        .input-section h2 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-family: inherit;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .help-text {
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 10px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 12px 30px;
+            font-size: 1rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            flex: 1;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+            padding: 12px 20px;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .results-header h2 {
+            color: #333;
+        }
+
+        .timestamp {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .topic-card {
+            border: 2px solid #f0f0f0;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            transition: all 0.3s;
+        }
+
+        .topic-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.1);
+        }
+
+        .topic-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .topic-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #333;
+            flex: 1;
+        }
+
+        .rank-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-right: 15px;
+        }
+
+        .momentum-score {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .metric {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .metric-label {
+            color: #666;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+
+        .metric-value {
+            color: #333;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .top-videos {
+            margin-top: 20px;
+        }
+
+        .top-videos h4 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+
+        .video-item {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            display: flex;
+            gap: 15px;
+            align-items: start;
+            transition: all 0.2s;
+        }
+
+        .video-item:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+
+        .video-thumbnail {
+            flex-shrink: 0;
+            width: 120px;
+            height: 68px;
+            border-radius: 6px;
+            overflow: hidden;
+            background: #ddd;
+        }
+
+        .video-thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .video-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .video-title {
+            color: #333;
+            font-weight: 500;
+            margin-bottom: 6px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .video-title a {
+            color: #333;
+            text-decoration: none;
+        }
+
+        .video-title a:hover {
+            color: #667eea;
+            text-decoration: underline;
+        }
+
+        .video-meta {
+            color: #666;
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+
+        .video-stats {
+            color: #667eea;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+
+        .error {
+            background: #fee;
+            border: 2px solid #fcc;
+            color: #c33;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .info-section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+        }
+
+        .info-section h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .info-item {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .info-item strong {
+            color: #333;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .info-item span {
+            color: #666;
+            line-height: 1.4;
+        }
+
+        .toggle-info {
+            color: #667eea;
+            cursor: pointer;
+            font-size: 0.9rem;
+            text-decoration: underline;
+            margin-top: 10px;
+            display: inline-block;
+        }
+
+        .clickable-metric {
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .clickable-metric:hover {
+            background: #e9ecef !important;
+            transform: scale(1.05);
+        }
+
+        .clickable-metric .metric-value {
+            color: #667eea !important;
+            text-decoration: underline;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            overflow-y: auto;
+        }
+
+        .modal-content {
+            background: white;
+            margin: 50px auto;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .modal-header h2 {
+            color: #333;
+            margin: 0;
+        }
+
+        .close-modal {
+            font-size: 2rem;
+            cursor: pointer;
+            color: #999;
+            border: none;
+            background: none;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close-modal:hover {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎬 YouTube Momentum Ranking</h1>
+            <p>Discover trending topics using real YouTube data</p>
+        </div>
+
+        <div class="input-section">
+            <h2>Enter Topics</h2>
+            <textarea 
+                id="topicsInput" 
+                placeholder="Enter topics, one per line:
+
+Union Budget 2026
+RBI Injection of 2 lakh crore
+Gold vs Silver vs Equity INR
+Liquidity vs Stability rent vs buy
+Crorepati states jobs land business"
+            ></textarea>
+            <p class="help-text">Enter up to 10 topics, one per line. Each topic will be analyzed for YouTube momentum.</p>
+            
+            <div class="button-group">
+                <button class="btn-primary" id="analyzeBtn" onclick="analyzeTopic()">
+                    🚀 Analyze Momentum
+                </button>
+                <button class="btn-secondary" onclick="clearResults()">
+                    🗑️ Clear
+                </button>
+                <button class="btn-secondary" onclick="clearCache()" title="Clear cached YouTube data">
+                    ♻️ Clear Cache
+                </button>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <h3>ℹ️ Understanding the Metrics</h3>
+            <div class="info-grid">
+                <div class="info-item">
+                    <strong>Total Videos</strong>
+                    <span>All videos found for this topic in the last 28 days</span>
+                </div>
+                <div class="info-item">
+                    <strong>Recent (7 Days)</strong>
+                    <span>Videos published in the past week (shows recent momentum)</span>
+                </div>
+                <div class="info-item">
+                    <strong>Outlier Videos (>20K) 👁️</strong>
+                    <span>Clickable: Shows all videos with >20K views. Count displayed smartly (20+, 40+, etc.)</span>
+                </div>
+                <div class="info-item">
+                    <strong>Unique Creators</strong>
+                    <span>Number of different channels covering this topic (shows breadth)</span>
+                </div>
+                <div class="info-item">
+                    <strong>🚀 Trend Velocity</strong>
+                    <span>Indicates if trend is accelerating, stable, or dying based on age distribution & performance</span>
+                </div>
+                <div class="info-item">
+                    <strong>Momentum Score (0-100)</strong>
+                    <span>50% Frequency + 50% Viral. Frequency = video volume/recency. Viral = high-view videos + creator diversity + engagement.</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="loading" class="loading hidden">
+            <div class="spinner"></div>
+            <h3>Analyzing topics...</h3>
+            <p>Fetching YouTube data and calculating momentum scores</p>
+        </div>
+
+        <div id="error" class="error hidden"></div>
+
+        <div id="outlierModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="modalTitle">Outlier Videos</h2>
+                    <button class="close-modal" onclick="closeOutlierModal()">&times;</button>
+                </div>
+                <div id="modalBody"></div>
+            </div>
+        </div>
+
+        <div id="results" class="results-section hidden">
+            <div class="results-header">
+                <h2>📊 Momentum Rankings</h2>
+                <span class="timestamp" id="timestamp"></span>
+            </div>
+            <div id="resultsContent"></div>
+        </div>
+    </div>
+
+    <script>
+        async function analyzeTopic() {
+            const input = document.getElementById('topicsInput').value.trim();
+            
+            if (!input) {
+                showError('Please enter at least one topic');
+                return;
+            }
+
+            const topics = input.split('\n')
+                .map(t => t.trim())
+                .filter(t => t.length > 0);
+
+            if (topics.length === 0) {
+                showError('Please enter at least one valid topic');
+                return;
+            }
+
+            if (topics.length > 10) {
+                showError('Maximum 10 topics allowed');
+                return;
+            }
+
+            // Show loading
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('results').classList.add('hidden');
+            document.getElementById('error').classList.add('hidden');
+            document.getElementById('analyzeBtn').disabled = true;
+
+            try {
+                const response = await fetch('/api/rank', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ topics })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Analysis failed');
+                }
+
+                displayResults(data);
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('analyzeBtn').disabled = false;
+            }
+        }
+
+        // Store outlier videos data globally for modal access
+        let outlierVideosData = {};
+
+        function displayResults(data) {
+            const resultsDiv = document.getElementById('results');
+            const contentDiv = document.getElementById('resultsContent');
+            const timestampSpan = document.getElementById('timestamp');
+
+            timestampSpan.textContent = `Analyzed at ${new Date(data.timestamp).toLocaleString()}`;
+
+            // Store outlier videos for each topic
+            outlierVideosData = {};
+            data.results.forEach((result, index) => {
+                outlierVideosData[`topic-${index}`] = {
+                    videos: result.outlier_videos || [],
+                    topic: result.topic
+                };
+            });
+
+            let html = '';
+            data.results.forEach((result, index) => {
+                html += `
+                    <div class="topic-card">
+                        <div class="topic-header">
+                            <span class="rank-badge">#${index + 1}</span>
+                            <div class="topic-title">${escapeHtml(result.topic)}</div>
+                            <div class="momentum-score">${result.scores.momentumScore}</div>
+                        </div>
+
+                        <div class="metrics-grid">
+                            <div class="metric">
+                                <div class="metric-label">Total Videos (28d)</div>
+                                <div class="metric-value">${result.metrics.total_video_count}</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-label">${result.metrics.recent_7d_count === result.metrics.total_video_count ? 'Recent (All New!)' : 'Recent (7 Days)'}</div>
+                                <div class="metric-value">
+                                    ${result.metrics.recent_7d_count}${result.metrics.recent_7d_count === result.metrics.total_video_count ? ' 🔥' : ''}
+                                </div>
+                            </div>
+                            <div class="metric clickable-metric" data-topic-id="topic-${index}" onclick="showOutlierModal(this)">
+                                <div class="metric-label">Outlier Videos (>20K) 👁️</div>
+                                <div class="metric-value">${formatOutlierCount(result.outlier_videos?.length || 0)}</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-label">Unique Creators</div>
+                                <div class="metric-value">${result.metrics.cross_creator_count}</div>
+                            </div>
+                        </div>
+
+                        ${result.metrics.recent_7d_count === result.metrics.total_video_count ? `
+                            <div style="margin-top: 15px; padding: 12px; background: #fff4e5; border-left: 4px solid #ff9800; border-radius: 6px; font-size: 0.9rem;">
+                                <strong>🔥 Hot Topic Alert:</strong> All ${result.metrics.total_video_count} videos were published in the last 7 days! This topic just exploded.
+                            </div>
+                        ` : ''}
+
+                        ${formatVelocitySection(result.metrics.velocity_metrics)}
+
+                        <div style="margin-top: 20px; padding: 15px; background: #f0f4ff; border-radius: 8px; font-size: 0.9rem;">
+                            <div style="color: #667eea; font-weight: 600; margin-bottom: 8px;">📊 Score Breakdown (0-100 Scale)</div>
+                            <div style="color: #555; line-height: 1.6;">
+                                <strong>Frequency Score:</strong> ${result.scores.trendScore}/50 
+                                <span style="color: #888;">(video volume & recency)</span><br>
+                                <strong>Viral Score:</strong> ${result.scores.outlierScore}/50 
+                                <span style="color: #888;">(high-view videos + creator diversity + avg engagement)</span><br>
+                                <strong>Final Momentum:</strong> <span style="color: #667eea; font-size: 1.1em; font-weight: 600;">${result.scores.momentumScore}/100</span> 
+                                <span style="color: #888;">(50% frequency + 50% viral)</span>
+                            </div>
+                        </div>
+
+                        ${result.top_videos && result.top_videos.length > 0 ? `
+                            <div class="top-videos">
+                                <h4>🔥 Recent Top Videos (last 14 days)</h4>
+                                ${result.top_videos.map(video => `
+                                    <div class="video-item">
+                                        <a href="${video.url}" target="_blank" class="video-thumbnail">
+                                            <img src="${video.thumbnail}" alt="${escapeHtml(video.title)}" loading="lazy">
+                                        </a>
+                                        <div class="video-info">
+                                            <div class="video-title">
+                                                <a href="${video.url}" target="_blank">${escapeHtml(video.title)}</a>
+                                            </div>
+                                            <div class="video-meta">
+                                                <div>${video.channel} • ${video.subs.toLocaleString()} subs</div>
+                                                <div class="video-stats">${video.views.toLocaleString()} views • ${video.views_per_day.toLocaleString()} views/day</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+
+            contentDiv.innerHTML = html;
+            resultsDiv.classList.remove('hidden');
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = `❌ Error: ${message}`;
+            errorDiv.classList.remove('hidden');
+        }
+
+        function clearResults() {
+            document.getElementById('topicsInput').value = '';
+            document.getElementById('results').classList.add('hidden');
+            document.getElementById('error').classList.add('hidden');
+        }
+
+        async function clearCache() {
+            try {
+                const response = await fetch('/api/cache/clear', { method: 'POST' });
+                if (response.ok) {
+                    alert('✅ Cache cleared! Fresh data will be fetched on next analysis.');
+                } else {
+                    alert('❌ Failed to clear cache');
+                }
+            } catch (error) {
+                alert('❌ Error clearing cache: ' + error.message);
+            }
+        }
+
+        function formatOutlierCount(count) {
+            if (count === 0) return '0';
+            if (count >= 100) return '100+';
+            if (count >= 80) return '80+';
+            if (count >= 60) return '60+';
+            if (count >= 40) return '40+';
+            if (count >= 20) return '20+';
+            return count.toString();
+        }
+
+        function formatVelocitySection(velocity) {
+            if (!velocity) return '';
+            
+            const { trend_signal, freshness_score, velocity_ratio, age_distribution, performance_trend } = velocity;
+            
+            // Determine color scheme and icon based on trend signal
+            let bgColor, borderColor, icon, signalText, signalDesc;
+            
+            if (trend_signal === 'accelerating') {
+                bgColor = '#e8f5e9';
+                borderColor = '#4caf50';
+                icon = '🚀';
+                signalText = 'ACCELERATING';
+                signalDesc = 'This trend is gaining momentum! Recent content is outperforming older content.';
+            } else if (trend_signal === 'dying') {
+                bgColor = '#ffebee';
+                borderColor = '#f44336';
+                icon = '⚠️';
+                signalText = 'DECLINING';
+                signalDesc = 'This trend appears to be fading. Recent activity has dropped significantly.';
+            } else if (trend_signal === 'stable') {
+                bgColor = '#fff9e6';
+                borderColor = '#ffc107';
+                icon = '📊';
+                signalText = 'STABLE';
+                signalDesc = 'This trend is maintaining steady momentum without major changes.';
+            } else {
+                return ''; // insufficient_data or error
+            }
+            
+            return `
+                <div style="margin-top: 15px; padding: 15px; background: ${bgColor}; border-left: 4px solid ${borderColor}; border-radius: 6px; font-size: 0.9rem;">
+                    <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                        <span style="font-size: 1.5rem; margin-right: 10px;">${icon}</span>
+                        <div>
+                            <strong style="color: ${borderColor}; font-size: 1.05rem;">TREND VELOCITY: ${signalText}</strong>
+                            <div style="color: #555; margin-top: 4px;">${signalDesc}</div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(0,0,0,0.1);">
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; font-size: 0.85rem;">
+                            <div>
+                                <strong>📅 Age Distribution:</strong><br>
+                                <span style="color: #555;">
+                                    0-7d: <strong>${age_distribution.videos_0_7d}</strong> videos<br>
+                                    8-14d: <strong>${age_distribution.videos_8_14d}</strong> videos<br>
+                                    15-28d: <strong>${age_distribution.videos_15_28d}</strong> videos
+                                </span>
+                            </div>
+                            <div>
+                                <strong>⚡ Performance Metrics:</strong><br>
+                                <span style="color: #555;">
+                                    Freshness: <strong>${freshness_score}%</strong> recent<br>
+                                    Velocity Ratio: <strong>${velocity_ratio}x</strong><br>
+                                    Recent VPD: <strong>${performance_trend.recent_vpd.toLocaleString()}</strong><br>
+                                    Older VPD: <strong>${performance_trend.older_vpd.toLocaleString()}</strong>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function showOutlierModal(element) {
+            const topicId = element.getAttribute('data-topic-id');
+            const data = outlierVideosData[topicId];
+            
+            if (!data) {
+                console.error('No data found for', topicId);
+                return;
+            }
+            
+            const videos = data.videos;
+            const topic = data.topic;
+            
+            const modal = document.getElementById('outlierModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalBody = document.getElementById('modalBody');
+            
+            modalTitle.textContent = `Outlier Videos for "${topic}" (${videos.length} videos >20K views)`;
+            
+            if (videos.length === 0) {
+                modalBody.innerHTML = '<p style="color: #666; text-align: center; padding: 40px;">No videos found with more than 20,000 views.</p>';
+            } else {
+                let html = '<div class="top-videos">';
+                videos.forEach(video => {
+                    html += `
+                        <div class="video-item">
+                            <a href="${video.url}" target="_blank" class="video-thumbnail">
+                                <img src="${video.thumbnail}" alt="${escapeHtml(video.title)}" loading="lazy">
+                            </a>
+                            <div class="video-info">
+                                <div class="video-title">
+                                    <a href="${video.url}" target="_blank">${escapeHtml(video.title)}</a>
+                                </div>
+                                <div class="video-meta">
+                                    <div>${video.channel} • ${video.subs.toLocaleString()} subs</div>
+                                    <div class="video-stats">${video.views.toLocaleString()} views • ${video.views_per_day.toLocaleString()} views/day • ${video.ageDays} days old</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                modalBody.innerHTML = html;
+            }
+            
+            modal.style.display = 'block';
+        }
+
+        function closeOutlierModal() {
+            document.getElementById('outlierModal').style.display = 'none';
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('outlierModal');
+            if (event.target === modal) {
+                closeOutlierModal();
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Enable Enter key to submit (Ctrl/Cmd + Enter)
+        document.getElementById('topicsInput').addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                analyzeTopic();
+            }
+        });
+    </script>
+</body>
+</html>

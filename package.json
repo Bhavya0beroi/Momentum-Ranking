@@ -1,0 +1,19 @@
+{
+  "name": "topicality-momentum",
+  "version": "1.0.0",
+  "description": "YouTube momentum ranking engine for content topics",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "keywords": ["youtube", "momentum", "ranking", "topics"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "dotenv": "^16.4.0",
+    "express": "^4.18.0"
+  }
+}
