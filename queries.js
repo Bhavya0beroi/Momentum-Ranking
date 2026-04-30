@@ -33,6 +33,7 @@ export function expandTopic(topic) {
   variations.forEach(v => queries.add(v));
   
   // Return limited number of queries
+  // contentType is passed optionally to reduce quota for Long Form (2 API calls per query)
   return Array.from(queries).slice(0, CONFIG.QUERIES_PER_TOPIC);
 }
 

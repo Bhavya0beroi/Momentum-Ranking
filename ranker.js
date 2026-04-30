@@ -22,8 +22,10 @@ export async function processTopic(topic, youtubeClient, options = { daysBack: 2
   console.log(`\n📊 Processing topic: "${topic}"`);
   
   // Step 1: Expand topic into queries
-  const queries = expandTopic(topic);
-  console.log(`  └─ Generated ${queries.length} queries`);
+  // Long Form makes 2 API calls per query — cap at 2 queries to preserve quota
+  const allQueries = expandTopic(topic);
+  const queries = options.contentType === 'long' ? allQueries.slice(0, 2) : allQueries;
+  console.log(`  └─ Generated ${queries.length} queries (contentType: ${options.contentType})`);
 
   // Step 2: Fetch data for all queries
   const allVideos = [];

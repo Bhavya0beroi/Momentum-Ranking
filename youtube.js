@@ -43,35 +43,43 @@ export class YouTubeClient {
       ? channelIds.map(id => ({ ...baseParams, channelId: id }))
       : [baseParams];
 
-    try {
-      const allVideoIds = [];
+    const allVideoIds = [];
 
-      for (const params of paramSets) {
+    for (const params of paramSets) {
+      try {
         if (options.contentType === 'short') {
           const res = await axios.get(`${this.baseURL}/search`, { params: { ...params, videoDuration: 'short' } });
-          allVideoIds.push(...res.data.items.map(i => i.id.videoId));
+          allVideoIds.push(...(res.data.items || []).map(i => i.id.videoId));
 
         } else if (options.contentType === 'long') {
-          const [medRes, longRes] = await Promise.all([
-            axios.get(`${this.baseURL}/search`, { params: { ...params, videoDuration: 'medium' } }),
-            axios.get(`${this.baseURL}/search`, { params: { ...params, videoDuration: 'long' } })
-          ]);
-          allVideoIds.push(...medRes.data.items.map(i => i.id.videoId));
-          allVideoIds.push(...longRes.data.items.map(i => i.id.videoId));
+          // Fetch medium (4–20 min) and long (>20 min) independently
+          // so a failure in one bucket doesn't lose the other's results
+          try {
+            const medRes = await axios.get(`${this.baseURL}/search`, { params: { ...params, videoDuration: 'medium' } });
+            allVideoIds.push(...(medRes.data.items || []).map(i => i.id.videoId));
+          } catch (e) {
+            console.error(`Error fetching medium-duration videos for "${query}":`, e.message);
+          }
+          try {
+            const longRes = await axios.get(`${this.baseURL}/search`, { params: { ...params, videoDuration: 'long' } });
+            allVideoIds.push(...(longRes.data.items || []).map(i => i.id.videoId));
+          } catch (e) {
+            console.error(`Error fetching long-duration videos for "${query}":`, e.message);
+          }
 
         } else {
           const res = await axios.get(`${this.baseURL}/search`, { params });
-          allVideoIds.push(...res.data.items.map(i => i.id.videoId));
+          allVideoIds.push(...(res.data.items || []).map(i => i.id.videoId));
         }
+      } catch (error) {
+        console.error(`Error on search for query "${query}" (params: ${JSON.stringify(params)}):`, error.message);
+        // Continue to next param set — don't abort the whole query
       }
-
-      const videoIds = [...new Set(allVideoIds)];
-      cache.set(cacheKey, videoIds);
-      return videoIds;
-    } catch (error) {
-      console.error(`Error searching videos for query "${query}":`, error.message);
-      return [];
     }
+
+    const videoIds = [...new Set(allVideoIds)];
+    cache.set(cacheKey, videoIds);
+    return videoIds;
   }
 
   /**
@@ -94,7 +102,7 @@ export class YouTubeClient {
         }
       });
 
-      const videos = response.data.items.map(item => ({
+      const videos = (response.data.items || []).map(item => ({
         videoId: item.id,
         title: item.snippet.title,
         channelId: item.snippet.channelId,
@@ -136,7 +144,7 @@ export class YouTubeClient {
       });
 
       const channelMap = {};
-      response.data.items.forEach(item => {
+      (response.data.items || []).forEach(item => {
         channelMap[item.id] = {
           subscriberCount: parseInt(item.statistics.subscriberCount || 1)
         };

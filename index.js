@@ -1,14 +1,18 @@
 import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { CONFIG } from './config.js';
 import { createYouTubeClient } from './youtube.js';
 import { rankTopics } from './ranker.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 const youtubeClient = createYouTubeClient();
 
 // Middleware
 app.use(express.json());
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -86,12 +90,16 @@ app.post('/api/cache/clear', (req, res) => {
   res.json({ success: true, message: 'Cache cleared' });
 });
 
-// Start server
-app.listen(CONFIG.PORT, () => {
-  console.log('\n🎬 YouTube Momentum Ranking Engine');
-  console.log('━'.repeat(50));
-  console.log(`🌐 Server: http://localhost:${CONFIG.PORT}`);
-  console.log(`📊 API: http://localhost:${CONFIG.PORT}/api/rank`);
-  console.log('━'.repeat(50));
-  console.log('\n✅ Ready to rank topics!\n');
-});
+// Start server locally (Vercel handles this in production)
+if (!process.env.VERCEL) {
+  app.listen(CONFIG.PORT, () => {
+    console.log('\n🎬 YouTube Momentum Ranking Engine');
+    console.log('━'.repeat(50));
+    console.log(`🌐 Server: http://localhost:${CONFIG.PORT}`);
+    console.log(`📊 API: http://localhost:${CONFIG.PORT}/api/rank`);
+    console.log('━'.repeat(50));
+    console.log('\n✅ Ready to rank topics!\n');
+  });
+}
+
+export default app;
