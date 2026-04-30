@@ -443,6 +443,232 @@
         .close-modal:hover {
             color: #333;
         }
+
+        .filter-row {
+            display: flex;
+            gap: 25px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .filter-group label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .segmented {
+            display: flex;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .seg-btn {
+            padding: 8px 16px;
+            font-size: 0.88rem;
+            font-weight: 500;
+            border: none;
+            border-right: 1px solid #e0e0e0;
+            background: white;
+            color: #555;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .seg-btn:last-child {
+            border-right: none;
+        }
+
+        .seg-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .seg-btn:hover:not(.active) {
+            background: #f0f0f0;
+        }
+
+        .active-filters-badge {
+            display: inline-block;
+            background: #f0f4ff;
+            color: #667eea;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-right: 10px;
+        }
+
+        /* Channel scope tab */
+        .channel-scope-section {
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        .scope-tab-bar {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        .scope-tab {
+            flex: 1;
+            padding: 12px 20px;
+            background: transparent;
+            border: none;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #666;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+            border-right: 2px solid #e0e0e0;
+        }
+        .scope-tab:last-child { border-right: none; }
+        .scope-tab.active {
+            background: white;
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+        }
+        .scope-tab:hover:not(.active) { background: #eee; }
+        .scope-tab-desc {
+            font-size: 0.75rem;
+            font-weight: 400;
+            color: #999;
+        }
+        .scope-tab.active .scope-tab-desc { color: #aaa; }
+        .scope-panel {
+            padding: 20px;
+            background: white;
+        }
+        .scope-hint {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+        }
+        .channel-input-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .channel-input-row input {
+            flex: 1;
+            padding: 10px 14px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-family: inherit;
+        }
+        .channel-input-row input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .btn-add-channel {
+            padding: 10px 18px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.2s;
+        }
+        .btn-add-channel:hover { background: #5a6fd6; }
+        .channel-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .channel-tag {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: white;
+            border: 2px solid #667eea;
+            color: #667eea;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        .channel-tag.resolving {
+            border-color: #ccc;
+            color: #999;
+        }
+        .channel-tag.error {
+            border-color: #f44336;
+            color: #f44336;
+        }
+        .channel-tag .remove-tag {
+            cursor: pointer;
+            font-size: 1.1rem;
+            line-height: 1;
+            font-weight: 700;
+            margin-left: 2px;
+        }
+        .channel-tag .remove-tag:hover { opacity: 0.6; }
+        .channel-action-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+        .save-default-btn {
+            padding: 7px 14px;
+            background: white;
+            border: 2px solid #667eea;
+            color: #667eea;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .save-default-btn:hover { background: #f0f4ff; }
+        .default-channels-hint {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 6px;
+        }
+
+        /* Show more button */
+        .show-more-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .show-more-btn {
+            flex: 1;
+            padding: 9px;
+            background: white;
+            border: 2px solid #667eea;
+            color: #667eea;
+            border-radius: 8px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .show-more-btn:hover { background: #f0f4ff; }
+        .show-all-btn { flex: 0.5; }
     </style>
 </head>
 <body>
@@ -454,6 +680,59 @@
 
         <div class="input-section">
             <h2>Enter Topics</h2>
+
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label>Content Type</label>
+                    <div class="segmented">
+                        <button class="seg-btn active" onclick="setFilter('contentType', 'all', this)">All</button>
+                        <button class="seg-btn" onclick="setFilter('contentType', 'short', this)">Short Form</button>
+                        <button class="seg-btn" onclick="setFilter('contentType', 'long', this)">Long Form</button>
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label>Date Range</label>
+                    <div class="segmented">
+                        <button class="seg-btn" onclick="setFilter('daysBack', 7, this)">7d</button>
+                        <button class="seg-btn" onclick="setFilter('daysBack', 14, this)">14d</button>
+                        <button class="seg-btn active" onclick="setFilter('daysBack', 28, this)">28d</button>
+                        <button class="seg-btn" onclick="setFilter('daysBack', 90, this)">3mo</button>
+                        <button class="seg-btn" onclick="setFilter('daysBack', 180, this)">6mo</button>
+                        <button class="seg-btn" onclick="setFilter('daysBack', 365, this)">1yr</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="channel-scope-section">
+                <div class="scope-tab-bar">
+                    <button class="scope-tab active" id="tab-default" onclick="setScopeTab('default')">
+                        🌐 Default <span class="scope-tab-desc">All YouTube</span>
+                    </button>
+                    <button class="scope-tab" id="tab-selected" onclick="setScopeTab('selected')">
+                        🎯 Selected Channels <span class="scope-tab-desc" id="selected-count-badge"></span>
+                    </button>
+                </div>
+
+                <div class="scope-panel" id="panel-default">
+                    <p class="scope-hint">Searching across all of YouTube. Switch to <strong>Selected Channels</strong> to restrict results to specific channels.</p>
+                </div>
+
+                <div class="scope-panel hidden" id="panel-selected">
+                    <p class="scope-hint">Only videos from the channels below will appear in results.</p>
+                    <div class="channel-input-row">
+                        <input type="text" id="channelUrlInput" placeholder="Paste YouTube channel URL — /@handle, /channel/UC..., /c/name" />
+                        <button class="btn-add-channel" onclick="addChannel()">+ Add</button>
+                    </div>
+                    <div class="channel-tags" id="channelTags"></div>
+                    <div class="channel-action-row">
+                        <button class="save-default-btn" onclick="saveDefaultChannels()">💾 Save as Default</button>
+                        <button class="save-default-btn" onclick="loadDefaultChannels()" style="border-color:#999; color:#666;">↩ Load Saved</button>
+                        <button class="save-default-btn" onclick="clearChannels()" style="border-color:#f44336; color:#f44336;">✕ Clear All</button>
+                    </div>
+                    <p class="default-channels-hint" id="defaultChannelsHint"></p>
+                </div>
+            </div>
+
             <textarea 
                 id="topicsInput" 
                 placeholder="Enter topics, one per line:
@@ -537,6 +816,196 @@ Crorepati states jobs land business"
     </div>
 
     <script>
+        // ─── Filter State ─────────────────────────────────────────
+        const filters = { contentType: 'all', daysBack: 28 };
+
+        function setFilter(key, value, btn) {
+            filters[key] = value;
+            const group = btn.parentElement;
+            group.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+
+        // ─── Channel Scope Tab ─────────────────────────────────────
+        let activeScopeTab = 'default';
+
+        function setScopeTab(tab) {
+            activeScopeTab = tab;
+            document.getElementById('tab-default').classList.toggle('active', tab === 'default');
+            document.getElementById('tab-selected').classList.toggle('active', tab === 'selected');
+            document.getElementById('panel-default').classList.toggle('hidden', tab !== 'default');
+            document.getElementById('panel-selected').classList.toggle('hidden', tab !== 'selected');
+        }
+
+        // ─── Channel Filter ────────────────────────────────────────
+        let activeChannels = [];
+
+        async function addChannel() {
+            const input = document.getElementById('channelUrlInput');
+            const url = input.value.trim();
+            if (!url) return;
+            if (!url.includes('youtube.com')) {
+                alert('Please enter a valid YouTube channel URL');
+                return;
+            }
+            if (activeChannels.find(c => c.url === url)) {
+                input.value = '';
+                return;
+            }
+            const placeholder = { url, channelId: null, channelTitle: url, resolved: false, resolving: true };
+            activeChannels.push(placeholder);
+            renderChannelTags();
+            input.value = '';
+
+            try {
+                const response = await fetch('/api/resolve-channels', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ urls: [url] })
+                });
+                const data = await response.json();
+                const resolved = data.channels[0];
+                const idx = activeChannels.findIndex(c => c.url === url);
+                if (idx !== -1) {
+                    activeChannels[idx] = resolved.resolved
+                        ? { url, channelId: resolved.channelId, channelTitle: resolved.channelTitle, resolved: true }
+                        : { url, channelId: null, channelTitle: 'Could not resolve', resolved: false, error: true };
+                }
+                renderChannelTags();
+            } catch (err) {
+                const idx = activeChannels.findIndex(c => c.url === url);
+                if (idx !== -1) activeChannels[idx] = { ...activeChannels[idx], resolving: false, error: true };
+                renderChannelTags();
+            }
+        }
+
+        function removeChannel(url) {
+            activeChannels = activeChannels.filter(c => c.url !== url);
+            renderChannelTags();
+        }
+
+        function renderChannelTags() {
+            const container = document.getElementById('channelTags');
+            if (activeChannels.length === 0) { container.innerHTML = ''; }
+            else {
+                container.innerHTML = activeChannels.map(ch => `
+                    <div class="channel-tag ${ch.resolving ? 'resolving' : ''} ${ch.error ? 'error' : ''}">
+                        <span>${ch.resolving ? '⏳ Resolving...' : ch.error ? '❌ ' + escapeHtml(ch.url) : '✓ ' + escapeHtml(ch.channelTitle)}</span>
+                        <span class="remove-tag" onclick="removeChannel('${ch.url.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">&times;</span>
+                    </div>
+                `).join('');
+            }
+            // Update badge on Selected Channels tab
+            const resolved = activeChannels.filter(c => c.resolved).length;
+            const badge = document.getElementById('selected-count-badge');
+            if (badge) badge.textContent = resolved > 0 ? `${resolved} channel${resolved > 1 ? 's' : ''}` : '';
+        }
+
+        function clearChannels() {
+            activeChannels = [];
+            renderChannelTags();
+            const hint = document.getElementById('defaultChannelsHint');
+            if (hint) hint.textContent = 'No channels selected. Add channels above or switch to Default.';
+        }
+
+        function saveDefaultChannels() {
+            const toSave = activeChannels.filter(c => c.resolved);
+            localStorage.setItem('defaultChannels', JSON.stringify(toSave));
+            const hint = document.getElementById('defaultChannelsHint');
+            hint.textContent = `✅ ${toSave.length} channel(s) saved as defaults`;
+            setTimeout(() => hint.textContent = '', 3000);
+        }
+
+        function loadDefaultChannels() {
+            const saved = localStorage.getItem('defaultChannels');
+            if (!saved) { alert('No default channels saved yet. Add channels and click "Save as Default".'); return; }
+            activeChannels = JSON.parse(saved);
+            renderChannelTags();
+            const hint = document.getElementById('defaultChannelsHint');
+            hint.textContent = `↩ Loaded ${activeChannels.length} default channel(s)`;
+            setTimeout(() => hint.textContent = '', 3000);
+        }
+
+        window.addEventListener('load', () => {
+            const saved = localStorage.getItem('defaultChannels');
+            if (saved) {
+                try {
+                    activeChannels = JSON.parse(saved);
+                    renderChannelTags();
+                    document.getElementById('defaultChannelsHint').textContent = `Default channels loaded (${activeChannels.length})`;
+                } catch (e) {}
+            }
+            document.getElementById('channelUrlInput').addEventListener('keydown', e => {
+                if (e.key === 'Enter') addChannel();
+            });
+        });
+
+        // ─── Show More / Show All ──────────────────────────────────
+        function buildVideoItem(video) {
+            return `
+                <div class="video-item">
+                    <a href="${video.url}" target="_blank" class="video-thumbnail">
+                        <img src="${video.thumbnail}" alt="" loading="lazy">
+                    </a>
+                    <div class="video-info">
+                        <div class="video-title">
+                            <a href="${video.url}" target="_blank">${escapeHtml(video.title)}</a>
+                        </div>
+                        <div class="video-meta">
+                            <div>${escapeHtml(video.channel)} • ${video.subs.toLocaleString()} subs</div>
+                            <div class="video-stats">${video.views.toLocaleString()} views • ${video.views_per_day.toLocaleString()} views/day • ${video.ageDays}d old</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function buildVideoSection(videos, topicIndex) {
+            if (!videos || videos.length === 0) return '';
+            const first5 = videos.slice(0, 5);
+            const rest = videos.slice(5);
+            let html = first5.map(buildVideoItem).join('');
+            if (rest.length > 0) {
+                html += `
+                    <div id="video-more-${topicIndex}" style="display:none">
+                        ${rest.map(buildVideoItem).join('')}
+                    </div>
+                    <div class="show-more-row" id="show-more-row-${topicIndex}">
+                        <button class="show-more-btn" onclick="showMoreVideos(${topicIndex}, ${videos.length})">
+                            Show ${Math.min(10, rest.length)} more
+                        </button>
+                        <button class="show-more-btn show-all-btn" onclick="showAllVideos(${topicIndex}, ${videos.length})">
+                            Show all ${videos.length}
+                        </button>
+                    </div>
+                `;
+            }
+            return html;
+        }
+
+        function showMoreVideos(topicIndex, total) {
+            const moreDiv = document.getElementById(`video-more-${topicIndex}`);
+            const rowDiv = document.getElementById(`show-more-row-${topicIndex}`);
+            if (!moreDiv) return;
+            // Reveal next 10 hidden items by temporarily showing them
+            const items = moreDiv.querySelectorAll('.video-item');
+            let shown = 0;
+            items.forEach(item => {
+                if (item.style.display === 'none' || item.getAttribute('data-hidden') === '1') return;
+                shown++;
+            });
+            // Simpler: just show the entire overflow div
+            moreDiv.style.display = 'block';
+            if (rowDiv) rowDiv.style.display = 'none';
+        }
+
+        function showAllVideos(topicIndex, total) {
+            const moreDiv = document.getElementById(`video-more-${topicIndex}`);
+            const rowDiv = document.getElementById(`show-more-row-${topicIndex}`);
+            if (moreDiv) moreDiv.style.display = 'block';
+            if (rowDiv) rowDiv.style.display = 'none';
+        }
+
         async function analyzeTopic() {
             const input = document.getElementById('topicsInput').value.trim();
             
@@ -571,7 +1040,14 @@ Crorepati states jobs land business"
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ topics })
+                    body: JSON.stringify({
+                        topics,
+                        daysBack: filters.daysBack,
+                        contentType: filters.contentType,
+                        channelIds: (activeScopeTab === 'selected')
+                            ? activeChannels.filter(c => c.resolved && c.channelId).map(c => c.channelId)
+                            : []
+                    })
                 });
 
                 const data = await response.json();
@@ -597,9 +1073,13 @@ Crorepati states jobs land business"
             const contentDiv = document.getElementById('resultsContent');
             const timestampSpan = document.getElementById('timestamp');
 
-            timestampSpan.textContent = `Analyzed at ${new Date(data.timestamp).toLocaleString()}`;
+            const contentLabel = { all: 'All Videos', short: 'Short Form', long: 'Long Form' };
+            const daysLabel = { 7: '7 days', 14: '14 days', 28: '28 days', 90: '3 months', 180: '6 months', 365: '1 year' };
+            const channelNote = (data.filters?.channelIds?.length > 0) ? ` · ${data.filters.channelIds.length} channel(s)` : '';
+            const filterBadge = `${contentLabel[data.filters?.contentType] || 'All Videos'} · ${daysLabel[data.filters?.daysBack] || '28 days'}${channelNote}`;
+            timestampSpan.innerHTML = `<span class="active-filters-badge">${filterBadge}</span> Analyzed at ${new Date(data.timestamp).toLocaleString()}`;
 
-            // Store outlier videos for each topic
+            // Store outlier videos for modal
             outlierVideosData = {};
             data.results.forEach((result, index) => {
                 outlierVideosData[`topic-${index}`] = {
@@ -661,23 +1141,8 @@ Crorepati states jobs land business"
 
                         ${result.top_videos && result.top_videos.length > 0 ? `
                             <div class="top-videos">
-                                <h4>🔥 Recent Top Videos (last 14 days)</h4>
-                                ${result.top_videos.map(video => `
-                                    <div class="video-item">
-                                        <a href="${video.url}" target="_blank" class="video-thumbnail">
-                                            <img src="${video.thumbnail}" alt="${escapeHtml(video.title)}" loading="lazy">
-                                        </a>
-                                        <div class="video-info">
-                                            <div class="video-title">
-                                                <a href="${video.url}" target="_blank">${escapeHtml(video.title)}</a>
-                                            </div>
-                                            <div class="video-meta">
-                                                <div>${video.channel} • ${video.subs.toLocaleString()} subs</div>
-                                                <div class="video-stats">${video.views.toLocaleString()} views • ${video.views_per_day.toLocaleString()} views/day</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                `).join('')}
+                                <h4>🔥 Top Videos (last ${Math.min(data.filters?.daysBack || 28, 28)} days)</h4>
+                                ${buildVideoSection(result.top_videos, index)}
                             </div>
                         ` : ''}
                     </div>

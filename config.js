@@ -9,8 +9,11 @@ export const CONFIG = {
   YOUTUBE_BASE_URL: 'https://www.googleapis.com/youtube/v3',
   
   // Search parameters
-  MAX_RESULTS: 25,
-  DAYS_BACK: 28,
+  MAX_RESULTS_SHORT: 25,   // for ranges ≤28 days
+  MAX_RESULTS_LONG: 50,    // for ranges >28 days (3mo, 6mo, 1yr)
+  DAYS_BACK_DEFAULT: 28,
+  VALID_DAYS_OPTIONS: [7, 14, 28, 90, 180, 365],
+  VALID_CONTENT_TYPES: ['all', 'short', 'long'],
   
   // Query expansion
   QUERIES_PER_TOPIC: 4,

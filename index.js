@@ -18,7 +18,8 @@ app.get('/api/health', (req, res) => {
 // Main ranking endpoint
 app.post('/api/rank', async (req, res) => {
   try {
-    const { topics } = req.body;
+    const { topics, daysBack = 28, contentType = 'all' } = req.body;
+    const channelIds = Array.isArray(req.body.channelIds) ? req.body.channelIds : [];
 
     if (!topics || !Array.isArray(topics) || topics.length === 0) {
       return res.status(400).json({ 
@@ -32,14 +33,27 @@ app.post('/api/rank', async (req, res) => {
       });
     }
 
-    console.log(`\n🎯 Ranking request received for ${topics.length} topics`);
+    if (![7, 14, 28, 90, 180, 365].includes(Number(daysBack))) {
+      return res.status(400).json({ error: 'daysBack must be 7, 14, 28, 90, 180, or 365' });
+    }
 
-    const results = await rankTopics(topics, youtubeClient);
+    if (!['all', 'short', 'long'].includes(contentType)) {
+      return res.status(400).json({ error: 'contentType must be all, short, or long' });
+    }
+
+    if (!Array.isArray(channelIds) || channelIds.length > 10) {
+      return res.status(400).json({ error: 'channelIds must be an array of max 10 channel IDs' });
+    }
+
+    console.log(`\n🎯 Ranking request received for ${topics.length} topics [${contentType}, ${daysBack}d, ${channelIds.length} channels]`);
+
+    const results = await rankTopics(topics, youtubeClient, { daysBack: Number(daysBack), contentType, channelIds });
 
     res.json({
       success: true,
       timestamp: new Date().toISOString(),
       total_topics: results.length,
+      filters: { daysBack: Number(daysBack), contentType, channelIds },
       results
     });
 
@@ -49,6 +63,20 @@ app.post('/api/rank', async (req, res) => {
       error: 'Internal server error',
       message: error.message 
     });
+  }
+});
+
+// Resolve YouTube channel URLs to channel IDs
+app.post('/api/resolve-channels', async (req, res) => {
+  try {
+    const { urls } = req.body;
+    if (!Array.isArray(urls) || urls.length === 0) {
+      return res.status(400).json({ error: 'Provide an array of YouTube channel URLs' });
+    }
+    const channels = await youtubeClient.resolveChannelUrls(urls);
+    res.json({ success: true, channels });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 

@@ -18,7 +18,7 @@ function deduplicateVideos(videos) {
 /**
  * Process a single topic
  */
-export async function processTopic(topic, youtubeClient) {
+export async function processTopic(topic, youtubeClient, options = { daysBack: 28, contentType: 'all', channelIds: [] }) {
   console.log(`\n📊 Processing topic: "${topic}"`);
   
   // Step 1: Expand topic into queries
@@ -29,7 +29,7 @@ export async function processTopic(topic, youtubeClient) {
   const allVideos = [];
   for (const query of queries) {
     console.log(`  └─ Fetching: "${query}"`);
-    const videos = await youtubeClient.fetchQueryData(query);
+    const videos = await youtubeClient.fetchQueryData(query, options);
     allVideos.push(...videos);
     console.log(`     ✓ Found ${videos.length} videos`);
   }
@@ -50,8 +50,9 @@ export async function processTopic(topic, youtubeClient) {
   // Step 5: Calculate scores
   const scores = calculateScores(metrics);
 
-  // Step 6: Get top videos (recent only - last 14 days)
-  const topVideos = getTopVideos(metrics.enrichedVideos || []);
+  // Step 6: Get top videos — return up to 20, capped at 28d window for display
+  const topVideosDays = Math.min(options.daysBack, 28);
+  const topVideos = getTopVideos(metrics.enrichedVideos || [], 20, topVideosDays);
   
   // Step 7: Get all outlier videos (>20K views)
   const outlierVideos = getOutlierVideos(metrics.enrichedVideos || []);
@@ -79,7 +80,7 @@ export async function processTopic(topic, youtubeClient) {
 /**
  * Rank multiple topics by momentum
  */
-export async function rankTopics(topics, youtubeClient) {
+export async function rankTopics(topics, youtubeClient, options = { daysBack: 28, contentType: 'all', channelIds: [] }) {
   console.log(`\n🚀 Starting momentum analysis for ${topics.length} topics...\n`);
   console.log('━'.repeat(60));
 
@@ -87,7 +88,7 @@ export async function rankTopics(topics, youtubeClient) {
   const results = [];
   for (const topic of topics) {
     try {
-      const result = await processTopic(topic, youtubeClient);
+      const result = await processTopic(topic, youtubeClient, options);
       results.push(result);
     } catch (error) {
       console.error(`❌ Error processing topic "${topic}":`, error.message);

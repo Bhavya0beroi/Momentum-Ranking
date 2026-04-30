@@ -264,9 +264,9 @@ export function normalizeScores(topicResults) {
  * Only shows RECENT videos (last 14 days) sorted by views
  * This helps content creators see what's currently working
  */
-export function getTopVideos(enrichedVideos, limit = 5) {
+export function getTopVideos(enrichedVideos, limit = 20, daysBack = 14) {
   const recentCutoff = new Date();
-  recentCutoff.setDate(recentCutoff.getDate() - 14);
+  recentCutoff.setDate(recentCutoff.getDate() - daysBack);
   
   return enrichedVideos
     .filter(v => new Date(v.publishedAt) >= recentCutoff)
