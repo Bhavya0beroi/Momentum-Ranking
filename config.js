@@ -3,6 +3,11 @@ dotenv.config();
 
 export const CONFIG = {
   YOUTUBE_API_KEY: process.env.YOUTUBE_API_KEY,
+  YOUTUBE_API_KEYS: [
+    process.env.YOUTUBE_API_KEY,
+    process.env.YOUTUBE_API_KEY_2,
+    process.env.YOUTUBE_API_KEY_3,
+  ].filter(Boolean),
   PORT: process.env.PORT || 3000,
   
   // YouTube API endpoints

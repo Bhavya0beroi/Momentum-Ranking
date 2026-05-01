@@ -3,13 +3,69 @@ import { CONFIG } from './config.js';
 
 const cache = new Map();
 
+// ---------------------------------------------------------------------------
+// API key rotation
+// ---------------------------------------------------------------------------
+const apiKeys = CONFIG.YOUTUBE_API_KEYS;
+let currentKeyIndex = 0;
+const exhaustedKeys = new Set();
+
+function getCurrentKey() {
+  return apiKeys[currentKeyIndex];
+}
+
+function isQuotaError(error) {
+  if (error.response?.status !== 403) return false;
+  const reason = error.response?.data?.error?.errors?.[0]?.reason;
+  return reason === 'quotaExceeded' || reason === 'dailyLimitExceeded';
+}
+
+/**
+ * Rotate away from fromIndex when its quota is exceeded.
+ * Returns true if a fresh key is available, false if all keys are exhausted.
+ */
+function rotateKey(fromIndex) {
+  if (currentKeyIndex !== fromIndex) return true; // already rotated by a concurrent call
+  exhaustedKeys.add(fromIndex);
+  for (let i = 0; i < apiKeys.length; i++) {
+    if (!exhaustedKeys.has(i)) {
+      currentKeyIndex = i;
+      console.warn(`[YouTube] Key ${fromIndex + 1} quota exceeded — switched to key ${i + 1}`);
+      return true;
+    }
+  }
+  return false;
+}
+
 /**
  * YouTube API Client
  */
 export class YouTubeClient {
-  constructor(apiKey) {
-    this.apiKey = apiKey;
+  constructor() {
     this.baseURL = CONFIG.YOUTUBE_BASE_URL;
+  }
+
+  /**
+   * Axios GET with automatic key rotation on quota errors.
+   * Tries every available key before giving up.
+   */
+  async apiGet(url, params) {
+    for (let attempt = 0; attempt < apiKeys.length; attempt++) {
+      const keyIndex = currentKeyIndex;
+      try {
+        return await axios.get(url, { params: { ...params, key: apiKeys[keyIndex] } });
+      } catch (error) {
+        if (isQuotaError(error)) {
+          const hasMore = rotateKey(keyIndex);
+          if (!hasMore) {
+            throw new Error('All YouTube API keys have reached their daily quota limit.');
+          }
+        } else {
+          throw error;
+        }
+      }
+    }
+    throw new Error('All YouTube API keys have reached their daily quota limit.');
   }
 
   /**
@@ -29,7 +85,6 @@ export class YouTubeClient {
     publishedAfter.setDate(publishedAfter.getDate() - options.daysBack);
 
     const baseParams = {
-      key: this.apiKey,
       q: query,
       type: 'video',
       part: 'id',
@@ -48,27 +103,27 @@ export class YouTubeClient {
     for (const params of paramSets) {
       try {
         if (options.contentType === 'short') {
-          const res = await axios.get(`${this.baseURL}/search`, { params: { ...params, videoDuration: 'short' } });
+          const res = await this.apiGet(`${this.baseURL}/search`, { ...params, videoDuration: 'short' });
           allVideoIds.push(...(res.data.items || []).map(i => i.id.videoId));
 
         } else if (options.contentType === 'long') {
           // Fetch medium (4–20 min) and long (>20 min) independently
           // so a failure in one bucket doesn't lose the other's results
           try {
-            const medRes = await axios.get(`${this.baseURL}/search`, { params: { ...params, videoDuration: 'medium' } });
+            const medRes = await this.apiGet(`${this.baseURL}/search`, { ...params, videoDuration: 'medium' });
             allVideoIds.push(...(medRes.data.items || []).map(i => i.id.videoId));
           } catch (e) {
             console.error(`Error fetching medium-duration videos for "${query}":`, e.message);
           }
           try {
-            const longRes = await axios.get(`${this.baseURL}/search`, { params: { ...params, videoDuration: 'long' } });
+            const longRes = await this.apiGet(`${this.baseURL}/search`, { ...params, videoDuration: 'long' });
             allVideoIds.push(...(longRes.data.items || []).map(i => i.id.videoId));
           } catch (e) {
             console.error(`Error fetching long-duration videos for "${query}":`, e.message);
           }
 
         } else {
-          const res = await axios.get(`${this.baseURL}/search`, { params });
+          const res = await this.apiGet(`${this.baseURL}/search`, params);
           allVideoIds.push(...(res.data.items || []).map(i => i.id.videoId));
         }
       } catch (error) {
@@ -94,12 +149,9 @@ export class YouTubeClient {
     }
 
     try {
-      const response = await axios.get(`${this.baseURL}/videos`, {
-        params: {
-          key: this.apiKey,
-          id: videoIds.join(','),
-          part: 'snippet,statistics'
-        }
+      const response = await this.apiGet(`${this.baseURL}/videos`, {
+        id: videoIds.join(','),
+        part: 'snippet,statistics'
       });
 
       const videos = (response.data.items || []).map(item => ({
@@ -135,12 +187,9 @@ export class YouTubeClient {
     }
 
     try {
-      const response = await axios.get(`${this.baseURL}/channels`, {
-        params: {
-          key: this.apiKey,
-          id: uniqueChannelIds.join(','),
-          part: 'statistics'
-        }
+      const response = await this.apiGet(`${this.baseURL}/channels`, {
+        id: uniqueChannelIds.join(','),
+        part: 'statistics'
       });
 
       const channelMap = {};
@@ -202,9 +251,7 @@ export class YouTubeClient {
         if (!channelId) {
           const handleMatch = url.match(/youtube\.com\/@([\w.-]+)/);
           if (handleMatch) {
-            const res = await axios.get(`${this.baseURL}/channels`, {
-              params: { key: this.apiKey, forHandle: handleMatch[1], part: 'id,snippet' }
-            });
+            const res = await this.apiGet(`${this.baseURL}/channels`, { forHandle: handleMatch[1], part: 'id,snippet' });
             if (res.data.items?.length > 0) {
               channelId = res.data.items[0].id;
               channelTitle = res.data.items[0].snippet.title;
@@ -216,9 +263,7 @@ export class YouTubeClient {
         if (!channelId) {
           const customMatch = url.match(/youtube\.com\/c\/([\w.-]+)/);
           if (customMatch) {
-            const res = await axios.get(`${this.baseURL}/channels`, {
-              params: { key: this.apiKey, forUsername: customMatch[1], part: 'id,snippet' }
-            });
+            const res = await this.apiGet(`${this.baseURL}/channels`, { forUsername: customMatch[1], part: 'id,snippet' });
             if (res.data.items?.length > 0) {
               channelId = res.data.items[0].id;
               channelTitle = res.data.items[0].snippet.title;
@@ -228,9 +273,7 @@ export class YouTubeClient {
 
         // Fetch title for Format 1 (only had the ID)
         if (channelId && channelTitle === url) {
-          const res = await axios.get(`${this.baseURL}/channels`, {
-            params: { key: this.apiKey, id: channelId, part: 'snippet' }
-          });
+          const res = await this.apiGet(`${this.baseURL}/channels`, { id: channelId, part: 'snippet' });
           if (res.data.items?.length > 0) {
             channelTitle = res.data.items[0].snippet.title;
           }
@@ -260,8 +303,9 @@ export class YouTubeClient {
  * Create a singleton instance
  */
 export function createYouTubeClient() {
-  if (!CONFIG.YOUTUBE_API_KEY) {
-    throw new Error('YOUTUBE_API_KEY is required in .env file');
+  if (apiKeys.length === 0) {
+    throw new Error('At least one YOUTUBE_API_KEY is required in environment variables.');
   }
-  return new YouTubeClient(CONFIG.YOUTUBE_API_KEY);
+  console.log(`[YouTube] Initialized with ${apiKeys.length} API key(s).`);
+  return new YouTubeClient();
 }
