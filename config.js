@@ -13,15 +13,15 @@ export const CONFIG = {
   // YouTube API endpoints
   YOUTUBE_BASE_URL: 'https://www.googleapis.com/youtube/v3',
   
-  // Search parameters
-  MAX_RESULTS_SHORT: 25,   // for ranges ≤28 days
-  MAX_RESULTS_LONG: 50,    // for ranges >28 days (3mo, 6mo, 1yr)
+  // Search parameters — lower maxResults reduces videos.list/channels.list payload size
+  MAX_RESULTS_SHORT: 15,   // for ranges ≤28 days
+  MAX_RESULTS_LONG: 25,    // for ranges >28 days (3mo, 6mo, 1yr)
   DAYS_BACK_DEFAULT: 28,
   VALID_DAYS_OPTIONS: [7, 14, 28, 90, 180, 365],
   VALID_CONTENT_TYPES: ['all', 'short', 'long'],
   
-  // Query expansion
-  QUERIES_PER_TOPIC: 4,
+  // Query expansion — keep at 2 to conserve quota (each search.list costs 100 units)
+  QUERIES_PER_TOPIC: 2,
   
   // Scoring weights
   WEIGHTS: {
