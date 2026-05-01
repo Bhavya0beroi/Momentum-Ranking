@@ -20,7 +20,7 @@ function getCurrentKey() {
 function isQuotaError(error) {
   if (error.response?.status !== 403) return false;
   const reason = error.response?.data?.error?.errors?.[0]?.reason;
-  return reason === 'quotaExceeded' || reason === 'dailyLimitExceeded';
+  return reason === 'quotaExceeded' || reason === 'dailyLimitExceeded' || reason === 'rateLimitExceeded';
 }
 
 /**

@@ -102,6 +102,7 @@ export async function rankTopics(topics, youtubeClient, options = { daysBack: 28
           recent_28d_count: 0,
           avg_views_per_day: 0,
           median_views_per_day: 0,
+          videos_above_20k_count: 0,
           outlier_video_count: 0,
           cross_creator_count: 0,
           total_video_count: 0,
@@ -115,11 +116,14 @@ export async function rankTopics(topics, youtubeClient, options = { daysBack: 28
           }
         },
         scores: {
+          rawTrendScore: 0,
+          rawOutlierScore: 0,
           trendScore: 0,
           outlierScore: 0,
-          rawMomentumScore: 0
+          momentumScore: 0
         },
         top_videos: [],
+        outlier_videos: [],
         error: error.message
       });
     }

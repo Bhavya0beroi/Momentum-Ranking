@@ -93,8 +93,12 @@ app.post('/api/resolve-channels', async (req, res) => {
 
 // Clear cache endpoint
 app.post('/api/cache/clear', (req, res) => {
-  getYouTubeClient().clearCache();
-  res.json({ success: true, message: 'Cache cleared' });
+  try {
+    getYouTubeClient().clearCache();
+    res.json({ success: true, message: 'Cache cleared' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Start server locally (Vercel handles this in production)

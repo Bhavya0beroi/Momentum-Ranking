@@ -234,17 +234,19 @@ export function calculateScores(metrics, allTopicsMetrics = []) {
 export function normalizeScores(topicResults) {
   if (topicResults.length === 0) return [];
 
-  // Find max values for normalization
-  const trendScores = topicResults.map(r => r.scores.rawTrendScore);
-  const outlierScores = topicResults.map(r => r.scores.rawOutlierScore);
+  // Find max values for normalization (default 0 guards errored topics with missing raws)
+  const trendScores = topicResults.map(r => r.scores.rawTrendScore ?? 0);
+  const outlierScores = topicResults.map(r => r.scores.rawOutlierScore ?? 0);
   
   const maxTrend = Math.max(...trendScores, 1);
   const maxOutlier = Math.max(...outlierScores, 1);
 
   return topicResults.map(result => {
+    const rawTrend = result.scores.rawTrendScore ?? 0;
+    const rawOutlier = result.scores.rawOutlierScore ?? 0;
     // Normalize each dimension to 0-50
-    const trendScore = Math.round((result.scores.rawTrendScore / maxTrend) * 50);
-    const outlierScore = Math.round((result.scores.rawOutlierScore / maxOutlier) * 50);
+    const trendScore = Math.round((rawTrend / maxTrend) * 50);
+    const outlierScore = Math.round((rawOutlier / maxOutlier) * 50);
     const momentumScore = trendScore + outlierScore;
 
     return {
