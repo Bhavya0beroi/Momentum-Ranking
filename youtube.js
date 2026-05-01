@@ -6,7 +6,10 @@ const cache = new Map();
 // ---------------------------------------------------------------------------
 // API key rotation
 // ---------------------------------------------------------------------------
-const apiKeys = CONFIG.YOUTUBE_API_KEYS;
+// Fall back to single YOUTUBE_API_KEY if YOUTUBE_API_KEYS isn't present (e.g. partial deploy)
+const apiKeys = (CONFIG.YOUTUBE_API_KEYS && CONFIG.YOUTUBE_API_KEYS.length > 0)
+  ? CONFIG.YOUTUBE_API_KEYS
+  : CONFIG.YOUTUBE_API_KEY ? [CONFIG.YOUTUBE_API_KEY] : [];
 let currentKeyIndex = 0;
 const exhaustedKeys = new Set();
 

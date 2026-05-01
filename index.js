@@ -8,7 +8,14 @@ import { rankTopics } from './ranker.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
-const youtubeClient = createYouTubeClient();
+
+// Lazy-initialized so a missing API key returns a proper JSON error instead of
+// crashing the serverless function during module load.
+let _youtubeClient = null;
+function getYouTubeClient() {
+  if (!_youtubeClient) _youtubeClient = createYouTubeClient();
+  return _youtubeClient;
+}
 
 // Middleware
 app.use(express.json());
@@ -51,7 +58,7 @@ app.post('/api/rank', async (req, res) => {
 
     console.log(`\n🎯 Ranking request received for ${topics.length} topics [${contentType}, ${daysBack}d, ${channelIds.length} channels]`);
 
-    const results = await rankTopics(topics, youtubeClient, { daysBack: Number(daysBack), contentType, channelIds });
+    const results = await rankTopics(topics, getYouTubeClient(), { daysBack: Number(daysBack), contentType, channelIds });
 
     res.json({
       success: true,
@@ -77,7 +84,7 @@ app.post('/api/resolve-channels', async (req, res) => {
     if (!Array.isArray(urls) || urls.length === 0) {
       return res.status(400).json({ error: 'Provide an array of YouTube channel URLs' });
     }
-    const channels = await youtubeClient.resolveChannelUrls(urls);
+    const channels = await getYouTubeClient().resolveChannelUrls(urls);
     res.json({ success: true, channels });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -86,7 +93,7 @@ app.post('/api/resolve-channels', async (req, res) => {
 
 // Clear cache endpoint
 app.post('/api/cache/clear', (req, res) => {
-  youtubeClient.clearCache();
+  getYouTubeClient().clearCache();
   res.json({ success: true, message: 'Cache cleared' });
 });
 
