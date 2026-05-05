@@ -1119,7 +1119,7 @@ Crorepati states jobs land business"
                             </div>
                         </div>
 
-                        ${result.metrics.recent_7d_count === result.metrics.total_video_count ? `
+                        ${result.metrics.total_video_count > 0 && result.metrics.recent_7d_count === result.metrics.total_video_count ? `
                             <div style="margin-top: 15px; padding: 12px; background: #fff4e5; border-left: 4px solid #ff9800; border-radius: 6px; font-size: 0.9rem;">
                                 <strong>🔥 Hot Topic Alert:</strong> All ${result.metrics.total_video_count} videos were published in the last 7 days! This topic just exploded.
                             </div>

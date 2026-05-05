@@ -41,6 +41,16 @@ function rotateKey(fromIndex) {
 }
 
 /**
+ * Parse ISO 8601 duration string (e.g. "PT1M30S") → total seconds
+ */
+function parseDurationSeconds(iso) {
+  if (!iso) return null;
+  const m = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if (!m) return null;
+  return (parseInt(m[1] || 0) * 3600) + (parseInt(m[2] || 0) * 60) + parseInt(m[3] || 0);
+}
+
+/**
  * YouTube API Client
  */
 export class YouTubeClient {
@@ -111,18 +121,16 @@ export class YouTubeClient {
 
         } else if (options.contentType === 'long') {
           // Fetch medium (4–20 min) and long (>20 min) independently
-          // so a failure in one bucket doesn't lose the other's results
-          try {
-            const medRes = await this.apiGet(`${this.baseURL}/search`, { ...params, videoDuration: 'medium' });
-            allVideoIds.push(...(medRes.data.items || []).map(i => i.id.videoId));
-          } catch (e) {
-            console.error(`Error fetching medium-duration videos for "${query}":`, e.message);
-          }
-          try {
-            const longRes = await this.apiGet(`${this.baseURL}/search`, { ...params, videoDuration: 'long' });
-            allVideoIds.push(...(longRes.data.items || []).map(i => i.id.videoId));
-          } catch (e) {
-            console.error(`Error fetching long-duration videos for "${query}":`, e.message);
+          // so a transient failure in one bucket doesn't lose the other's results.
+          // Quota / key errors are re-thrown so the caller can surface them.
+          for (const dur of ['medium', 'long']) {
+            try {
+              const res = await this.apiGet(`${this.baseURL}/search`, { ...params, videoDuration: dur });
+              allVideoIds.push(...(res.data.items || []).map(i => i.id.videoId));
+            } catch (e) {
+              if (e.message.includes('quota') || e.message.includes('API key')) throw e;
+              console.error(`Error fetching ${dur}-duration videos for "${query}":`, e.message);
+            }
           }
 
         } else {
@@ -154,7 +162,7 @@ export class YouTubeClient {
     try {
       const response = await this.apiGet(`${this.baseURL}/videos`, {
         id: videoIds.join(','),
-        part: 'snippet,statistics'
+        part: 'snippet,statistics,contentDetails'
       });
 
       const videos = (response.data.items || []).map(item => ({
@@ -166,7 +174,8 @@ export class YouTubeClient {
         thumbnail: item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url || '',
         viewCount: parseInt(item.statistics.viewCount || 0),
         likeCount: parseInt(item.statistics.likeCount || 0),
-        commentCount: parseInt(item.statistics.commentCount || 0)
+        commentCount: parseInt(item.statistics.commentCount || 0),
+        duration: item.contentDetails?.duration || ''
       }));
 
       cache.set(cacheKey, videos);
@@ -227,10 +236,22 @@ export class YouTubeClient {
     const channels = await this.getChannelDetails(channelIds);
 
     // Step 4: Enrich videos with channel data
-    return videos.map(video => ({
+    let enriched = videos.map(video => ({
       ...video,
       subscriberCount: channels[video.channelId]?.subscriberCount || 1
     }));
+
+    // Step 5: For Shorts, post-filter to ≤60 s.
+    // The YouTube search API's videoDuration:'short' returns everything <4 min;
+    // actual YouTube Shorts are ≤60 s.
+    if (options.contentType === 'short') {
+      enriched = enriched.filter(v => {
+        const secs = parseDurationSeconds(v.duration);
+        return secs === null || secs <= 60;
+      });
+    }
+
+    return enriched;
   }
 
   /**
