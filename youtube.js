@@ -72,6 +72,7 @@ export function isAllowedLanguage(title) {
 }
 
 const STOP_WORDS = new Set([
+  // Articles, prepositions, conjunctions
   'how', 'to', 'the', 'a', 'an', 'and', 'or', 'in', 'on', 'at', 'for',
   'of', 'with', 'is', 'are', 'was', 'be', 'do', 'i', 'my', 'your', 'vs',
   'by', 'this', 'that', 'it', 'its', 'from', 'about', 'can', 'will',
@@ -79,7 +80,23 @@ const STOP_WORDS = new Set([
   'up', 'all', 'as', 'if', 'so', 'out', 'just', 'more', 'also', 'into',
   'than', 'then', 'them', 'they', 'we', 'us', 'you', 'he', 'she', 'his',
   'her', 'our', 'their', 'new', 'get', 'got', 'has', 'have', 'had', 'did',
-  'does', 'am', 'me', 'one', 'two', 'day', 'per', 'off', 'own'
+  'does', 'am', 'me', 'one', 'two', 'day', 'per', 'off', 'own',
+  // Generic action verbs — far too broad to identify a topic.
+  // Domain-specific verbs (invest, earn, save, trade) are intentionally kept.
+  'manage', 'use', 'make', 'build', 'create', 'find', 'help',
+  'start', 'stop', 'run', 'go', 'know', 'show', 'try', 'keep',
+  'take', 'put', 'set', 'give', 'look', 'come', 'bring', 'turn',
+  'need', 'want', 'work', 'change', 'improve', 'grow', 'learn',
+  'understand', 'think', 'let', 'see', 'say', 'tell', 'ask', 'move',
+  'become', 'increase', 'reduce', 'avoid', 'achieve', 'follow',
+  // Generic YouTube filler / adjectives
+  'best', 'better', 'good', 'great', 'top', 'tips', 'tip', 'ways', 'way',
+  'steps', 'step', 'guide', 'tricks', 'trick', 'hack', 'hacks', 'ideas',
+  'things', 'thing', 'reason', 'reasons', 'secret', 'secrets', 'fact', 'facts',
+  'smart', 'simple', 'easy', 'quick', 'fast', 'real', 'right', 'true',
+  'free', 'full', 'high', 'low', 'big', 'small', 'every', 'never',
+  'always', 'ever', 'much', 'many', 'most', 'some', 'few', 'must',
+  'like', 'know', 'watch', 'here', 'now', 'today', 'year', 'time',
 ]);
 
 function extractKeywords(text) {
@@ -89,21 +106,33 @@ function extractKeywords(text) {
     .filter(w => w.length >= 2 && !STOP_WORDS.has(w));
 }
 
+function matchesKeyword(title, kw) {
+  if (kw.length <= 3) {
+    // Short keywords like "EV", "AI", "ICE" — word-boundary so "even" doesn't match "ev"
+    return new RegExp(`\\b${kw}\\b`, 'i').test(title);
+  }
+  return title.toLowerCase().includes(kw);
+}
+
 /**
- * Returns true when the video title contains at least one keyword from the
- * original topic.  Short keywords (≤3 chars, e.g. "EV", "AI") are matched
- * as whole words so "every" doesn't match "ev".
+ * Returns true when the video title is relevant to the original topic.
+ *
+ * Logic:
+ *  - Extract domain keywords from topic (generic verbs / filler stripped).
+ *  - 1 keyword  → it must appear in the title.
+ *  - 2 keywords → BOTH must appear (AND).  Prevents generic single-word
+ *    matches when the topic has a clear subject + modifier pair.
+ *  - 3+ keywords → majority (ceiling of half) must appear.
  */
 export function isRelevantToTopic(title, topic) {
   const keywords = extractKeywords(topic);
   if (keywords.length === 0) return true;
-  const titleLower = title.toLowerCase();
-  return keywords.some(kw => {
-    if (kw.length <= 3) {
-      return new RegExp(`\\b${kw}\\b`, 'i').test(title);
-    }
-    return titleLower.includes(kw);
-  });
+
+  const matches = keywords.filter(kw => matchesKeyword(title, kw));
+
+  if (keywords.length === 1) return matches.length >= 1;
+  if (keywords.length === 2) return matches.length >= 2;          // AND for pairs
+  return matches.length >= Math.ceil(keywords.length / 2);        // majority for 3+
 }
 
 // ---------------------------------------------------------------------------
