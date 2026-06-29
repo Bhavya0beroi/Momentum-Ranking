@@ -40,6 +40,74 @@ function rotateKey(fromIndex) {
   return false;
 }
 
+// ---------------------------------------------------------------------------
+// Language + relevance filters (exported so ranker.js can apply them)
+// ---------------------------------------------------------------------------
+
+/**
+ * Unicode ranges whose presence in a title means the video is NOT in
+ * English, Hindi, or Hinglish.
+ * Devanagari (0900-097F) is intentionally absent — that's Hindi, which is allowed.
+ */
+const BLOCKED_SCRIPT_RANGES = [
+  [0x0E00, 0x0E7F],  // Thai
+  [0x0600, 0x06FF],  // Arabic / Persian / Urdu
+  [0x4E00, 0x9FFF],  // CJK Unified (Chinese / Japanese)
+  [0x3040, 0x30FF],  // Japanese Hiragana + Katakana
+  [0x0400, 0x04FF],  // Cyrillic (Russian, Bulgarian, etc.)
+  [0x0590, 0x05FF],  // Hebrew
+  [0xAC00, 0xD7AF],  // Korean Hangul
+  [0x1000, 0x109F],  // Myanmar / Burmese
+  [0x10D0, 0x10FF],  // Georgian
+];
+
+export function isAllowedLanguage(title) {
+  for (const char of title) {
+    const code = char.codePointAt(0);
+    for (const [start, end] of BLOCKED_SCRIPT_RANGES) {
+      if (code >= start && code <= end) return false;
+    }
+  }
+  return true;
+}
+
+const STOP_WORDS = new Set([
+  'how', 'to', 'the', 'a', 'an', 'and', 'or', 'in', 'on', 'at', 'for',
+  'of', 'with', 'is', 'are', 'was', 'be', 'do', 'i', 'my', 'your', 'vs',
+  'by', 'this', 'that', 'it', 'its', 'from', 'about', 'can', 'will',
+  'what', 'why', 'when', 'where', 'which', 'who', 'not', 'no', 'but',
+  'up', 'all', 'as', 'if', 'so', 'out', 'just', 'more', 'also', 'into',
+  'than', 'then', 'them', 'they', 'we', 'us', 'you', 'he', 'she', 'his',
+  'her', 'our', 'their', 'new', 'get', 'got', 'has', 'have', 'had', 'did',
+  'does', 'am', 'me', 'one', 'two', 'day', 'per', 'off', 'own'
+]);
+
+function extractKeywords(text) {
+  return text.toLowerCase()
+    .split(/[\s\-_/|:,]+/)
+    .map(w => w.replace(/[^a-z0-9\u0900-\u097F]/g, ''))
+    .filter(w => w.length >= 2 && !STOP_WORDS.has(w));
+}
+
+/**
+ * Returns true when the video title contains at least one keyword from the
+ * original topic.  Short keywords (≤3 chars, e.g. "EV", "AI") are matched
+ * as whole words so "every" doesn't match "ev".
+ */
+export function isRelevantToTopic(title, topic) {
+  const keywords = extractKeywords(topic);
+  if (keywords.length === 0) return true;
+  const titleLower = title.toLowerCase();
+  return keywords.some(kw => {
+    if (kw.length <= 3) {
+      return new RegExp(`\\b${kw}\\b`, 'i').test(title);
+    }
+    return titleLower.includes(kw);
+  });
+}
+
+// ---------------------------------------------------------------------------
+
 /**
  * Parse ISO 8601 duration string (e.g. "PT1M30S") → total seconds
  */
@@ -102,7 +170,7 @@ export class YouTubeClient {
       type: 'video',
       part: 'id',
       maxResults: resolvedMax,
-      order: 'date',
+      order: 'relevance',
       publishedAfter: publishedAfter.toISOString()
     };
 

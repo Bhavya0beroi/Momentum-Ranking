@@ -1,5 +1,6 @@
 import { expandTopic } from './queries.js';
 import { calculateTopicMetrics, calculateScores, normalizeScores, getTopVideos, getOutlierVideos } from './scoring.js';
+import { isAllowedLanguage, isRelevantToTopic } from './youtube.js';
 
 /**
  * Deduplicate videos by videoId
@@ -38,10 +39,18 @@ export async function processTopic(topic, youtubeClient, options = { daysBack: 2
 
   // Step 3: Deduplicate videos
   const uniqueVideos = deduplicateVideos(allVideos);
-  console.log(`  └─ Total unique videos: ${uniqueVideos.length}`);
+  console.log(`  └─ Total unique videos (before filters): ${uniqueVideos.length}`);
+
+  // Step 3a: Language filter — keep English, Hindi (Devanagari), Hinglish only
+  const langFiltered = uniqueVideos.filter(v => isAllowedLanguage(v.title));
+  console.log(`  └─ After language filter: ${langFiltered.length}`);
+
+  // Step 3b: Relevance filter — title must contain at least one keyword from topic
+  const filteredVideos = langFiltered.filter(v => isRelevantToTopic(v.title, topic));
+  console.log(`  └─ After relevance filter: ${filteredVideos.length}`);
 
   // Step 4: Calculate metrics
-  const metrics = calculateTopicMetrics(uniqueVideos);
+  const metrics = calculateTopicMetrics(filteredVideos);
   
   // Log velocity metrics
   if (metrics.velocity_metrics) {
