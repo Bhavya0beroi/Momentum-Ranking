@@ -17,10 +17,28 @@ function getCurrentKey() {
   return apiKeys[currentKeyIndex];
 }
 
-function isQuotaError(error) {
+function getErrorReason(error) {
+  return error.response?.data?.error?.errors?.[0]?.reason || null;
+}
+
+function isDailyQuotaError(error) {
   if (error.response?.status !== 403) return false;
-  const reason = error.response?.data?.error?.errors?.[0]?.reason;
-  return reason === 'quotaExceeded' || reason === 'dailyLimitExceeded' || reason === 'rateLimitExceeded';
+  const reason = getErrorReason(error);
+  return reason === 'quotaExceeded' || reason === 'dailyLimitExceeded';
+}
+
+// Rate-limit errors are transient (per-second/per-minute window).
+// Rotating API keys does NOT help — a delay + retry on the same key does.
+function isRateLimitError(error) {
+  const status = error.response?.status;
+  if (status === 429) return true;
+  if (status !== 403) return false;
+  return getErrorReason(error) === 'rateLimitExceeded';
+}
+
+// Keep for backward compatibility in the one place it's still used
+function isQuotaError(error) {
+  return isDailyQuotaError(error) || isRateLimitError(error);
 }
 
 /**
@@ -184,20 +202,38 @@ export class YouTubeClient {
   }
 
   /**
-   * Axios GET with automatic key rotation on quota errors.
-   * Tries every available key before giving up.
+   * Axios GET with:
+   *  - Automatic key rotation on daily quota exhaustion
+   *  - Retry with exponential backoff on rate-limit errors (429 / rateLimitExceeded).
+   *    Rate limits are per-second/per-minute and affect all keys equally,
+   *    so rotating keys does not help — waiting does.
    */
   async apiGet(url, params) {
-    for (let attempt = 0; attempt < apiKeys.length; attempt++) {
+    const MAX_RATE_RETRIES = 3;
+    let rateLimitAttempts = 0;
+
+    // Outer loop: one pass per available API key (for daily quota rotation)
+    for (let keyAttempt = 0; keyAttempt < apiKeys.length; keyAttempt++) {
       const keyIndex = currentKeyIndex;
       try {
         return await axios.get(url, { params: { ...params, key: apiKeys[keyIndex] } });
       } catch (error) {
-        if (isQuotaError(error)) {
+        if (isDailyQuotaError(error)) {
+          // Daily quota gone — try the next key
           const hasMore = rotateKey(keyIndex);
-          if (!hasMore) {
-            throw new Error('All YouTube API keys have reached their daily quota limit.');
+          if (!hasMore) throw new Error('All YouTube API keys have reached their daily quota limit.');
+
+        } else if (isRateLimitError(error)) {
+          // Transient rate limit — back off and retry (don't rotate key)
+          rateLimitAttempts++;
+          if (rateLimitAttempts > MAX_RATE_RETRIES) {
+            throw new Error('YouTube API is rate-limiting requests. Please wait a few seconds and try again.');
           }
+          const delayMs = 1500 * rateLimitAttempts; // 1.5s, 3s, 4.5s
+          console.warn(`[YouTube] Rate limited (attempt ${rateLimitAttempts}/${MAX_RATE_RETRIES}). Retrying in ${delayMs}ms...`);
+          await new Promise(r => setTimeout(r, delayMs));
+          keyAttempt--; // retry same key after the delay
+
         } else {
           throw error;
         }
