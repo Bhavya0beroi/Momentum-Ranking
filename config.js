@@ -15,7 +15,11 @@ export const CONFIG = {
   
   // Search parameters — YouTube allows max 50 per search.list call (same quota cost as 25)
   MAX_RESULTS_SHORT: 25,   // for ranges ≤28 days
-  MAX_RESULTS_LONG: 50,    // for ranges >28 days (3mo, 6mo, 1yr) — YouTube API max
+  MAX_RESULTS_LONG: 50,    // for ranges >28 days — YouTube API max per page
+  // Pagination for long windows (daysBack > 28).
+  // Each extra page costs 100 quota units.
+  // 2 pages × 2 queries = 400 units per topic-search (vs 200 for short windows).
+  SEARCH_PAGES_LONG: 2,    // pages to fetch for 90d/180d/365d windows (50 videos × N pages)
   DAYS_BACK_DEFAULT: 28,
   VALID_DAYS_OPTIONS: [7, 14, 28, 90, 180, 365],
   VALID_CONTENT_TYPES: ['all', 'short', 'long'],
@@ -28,8 +32,9 @@ export const CONFIG = {
     RECENT_7D: 2,
     OUTLIER_VIDEO: 3,
     CROSS_CREATOR: 2,
-    TREND_WEIGHT: 0.5,      // Weight for time/trend dimension
-    OUTLIER_WEIGHT: 0.5     // Weight for outlier dimension
+    TREND_WEIGHT: 0.5,           // Weight for time/trend dimension
+    OUTLIER_WEIGHT: 0.5,         // Weight for outlier dimension
+    LONG_WINDOW_TOTAL: 0.3       // Factor for total_video_count in long-window trend score
   },
   
   // Outlier detection thresholds

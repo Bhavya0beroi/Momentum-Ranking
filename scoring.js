@@ -50,70 +50,88 @@ function countRecentVideos(videos, days) {
 }
 
 /**
- * Calculate velocity metrics based on age distribution and performance trends
- * Zero API quota - uses existing video data
+ * Calculate velocity metrics based on age distribution and performance trends.
+ * Zero API quota — uses existing video data.
+ *
+ * For daysBack ≤ 28: fixed buckets 0-7d / 8-14d / 15-28d (unchanged behaviour).
+ * For daysBack > 28: buckets scale to thirds of the window so that the trend
+ *   signal (accelerating/dying/stable) and freshness_score reflect the full
+ *   period rather than always pointing at the first 28 days.
+ *   The age_distribution object always includes the literal 0-7d / 8-14d /
+ *   15-28d counts so the UI doesn't need updating, plus bucket_labels showing
+ *   the actual ranges used for analysis.
  */
-export function calculateVelocityMetrics(enrichedVideos) {
-  if (enrichedVideos.length === 0) {
-    return {
-      freshness_score: 0,
-      velocity_ratio: 0,
-      is_accelerating: false,
-      is_dying: false,
-      is_stable: false,
-      age_distribution: {
-        videos_0_7d: 0,
-        videos_8_14d: 0,
-        videos_15_28d: 0
-      },
-      performance_trend: {
-        recent_vpd: 0,
-        older_vpd: 0
-      },
-      trend_signal: 'insufficient_data'
-    };
+export function calculateVelocityMetrics(enrichedVideos, daysBack = 28) {
+  const empty = {
+    freshness_score: 0,
+    velocity_ratio: 0,
+    is_accelerating: false,
+    is_dying: false,
+    is_stable: false,
+    age_distribution: {
+      videos_0_7d: 0,
+      videos_8_14d: 0,
+      videos_15_28d: 0,
+      bucket_labels: { b1: '0-7d', b2: '8-14d', b3: '15-28d' }
+    },
+    performance_trend: { recent_vpd: 0, older_vpd: 0 },
+    trend_signal: 'insufficient_data'
+  };
+  if (enrichedVideos.length === 0) return empty;
+
+  // ── Fixed 0-7 / 8-14 / 15-28 counts (always present for UI) ──────────────
+  const v_0_7   = enrichedVideos.filter(v => v.ageDays <= 7);
+  const v_8_14  = enrichedVideos.filter(v => v.ageDays > 7  && v.ageDays <= 14);
+  const v_15_28 = enrichedVideos.filter(v => v.ageDays > 14 && v.ageDays <= 28);
+
+  // ── Analysis buckets (scale to thirds for long windows) ───────────────────
+  let b1_max, b2_max, bucketLabels;
+  if (daysBack <= 28) {
+    b1_max = 7;
+    b2_max = 14;
+    bucketLabels = { b1: '0-7d', b2: '8-14d', b3: '15-28d' };
+  } else {
+    // Proportional thirds of the full window
+    b1_max = Math.round(daysBack / 3);
+    b2_max = Math.round((daysBack * 2) / 3);
+    bucketLabels = { b1: `0-${b1_max}d`, b2: `${b1_max + 1}-${b2_max}d`, b3: `${b2_max + 1}-${daysBack}d` };
   }
 
-  // Age distribution buckets
-  const videos_0_7d = enrichedVideos.filter(v => v.ageDays <= 7);
-  const videos_8_14d = enrichedVideos.filter(v => v.ageDays > 7 && v.ageDays <= 14);
-  const videos_15_28d = enrichedVideos.filter(v => v.ageDays > 14 && v.ageDays <= 28);
+  const recent  = enrichedVideos.filter(v => v.ageDays <= b1_max);
+  const middle  = enrichedVideos.filter(v => v.ageDays > b1_max && v.ageDays <= b2_max);
+  const oldest  = enrichedVideos.filter(v => v.ageDays > b2_max);
 
-  const count_0_7d = videos_0_7d.length;
-  const count_8_14d = videos_8_14d.length;
-  const count_15_28d = videos_15_28d.length;
+  const cnt_recent = recent.length;
+  const cnt_middle = middle.length;
+  const cnt_oldest = oldest.length;
 
-  // Freshness score: % of videos from last 7 days
-  const freshness_score = Math.round((count_0_7d / enrichedVideos.length) * 100);
+  // Freshness: % of videos in the most-recent bucket
+  const freshness_score = Math.round((cnt_recent / enrichedVideos.length) * 100);
 
-  // Performance comparison: recent vs older videos
-  const recent_vpd = count_0_7d > 0
-    ? videos_0_7d.reduce((sum, v) => sum + v.viewsPerDay, 0) / count_0_7d
-    : 0;
-  
-  const older_vpd = (count_8_14d + count_15_28d) > 0
-    ? [...videos_8_14d, ...videos_15_28d].reduce((sum, v) => sum + v.viewsPerDay, 0) / (count_8_14d + count_15_28d)
+  // Performance: views/day for recent bucket vs combined older buckets
+  const avgVpd = arr => arr.length > 0
+    ? arr.reduce((s, v) => s + v.viewsPerDay, 0) / arr.length
     : 0;
 
-  // Velocity ratio: >1 = newer content performing better (growing)
+  const recent_vpd = avgVpd(recent);
+  const older_vpd  = avgVpd([...middle, ...oldest]);
+
   const velocity_ratio = older_vpd > 0 ? recent_vpd / older_vpd : (recent_vpd > 0 ? 2 : 0);
 
-  // Trend detection logic
-  const is_accelerating = 
-    count_0_7d > count_8_14d && 
-    count_8_14d >= count_15_28d &&
-    velocity_ratio >= 1.2; // Recent videos performing 20%+ better
+  const is_accelerating =
+    cnt_recent > cnt_middle &&
+    cnt_middle >= cnt_oldest &&
+    velocity_ratio >= 1.2;
 
-  const is_dying = 
-    count_0_7d < count_8_14d * 0.5 || // Activity dropped by 50%+
-    (velocity_ratio < 0.7 && count_0_7d < count_15_28d); // Recent videos underperforming
+  const is_dying =
+    cnt_recent < cnt_middle * 0.5 ||
+    (velocity_ratio < 0.7 && cnt_recent < cnt_oldest);
 
   const is_stable = !is_accelerating && !is_dying;
 
-  // Overall trend signal
   let trend_signal = 'stable';
   if (is_accelerating) trend_signal = 'accelerating';
-  else if (is_dying) trend_signal = 'dying';
+  else if (is_dying)   trend_signal = 'dying';
 
   return {
     freshness_score,
@@ -122,22 +140,30 @@ export function calculateVelocityMetrics(enrichedVideos) {
     is_dying,
     is_stable,
     age_distribution: {
-      videos_0_7d: count_0_7d,
-      videos_8_14d: count_8_14d,
-      videos_15_28d: count_15_28d
+      // Literal 7d/14d/28d counts — always present so the UI works unchanged
+      videos_0_7d:   v_0_7.length,
+      videos_8_14d:  v_8_14.length,
+      videos_15_28d: v_15_28.length,
+      // Analysis bucket counts and their labels (scale with daysBack)
+      bucket_1: cnt_recent,
+      bucket_2: cnt_middle,
+      bucket_3: cnt_oldest,
+      bucket_labels: bucketLabels
     },
     performance_trend: {
       recent_vpd: Math.round(recent_vpd),
-      older_vpd: Math.round(older_vpd)
+      older_vpd:  Math.round(older_vpd)
     },
     trend_signal
   };
 }
 
 /**
- * Calculate topic-level metrics
+ * Calculate topic-level metrics.
+ * @param {Array}  videos   - filtered video objects
+ * @param {number} daysBack - search window (used to scale velocity buckets)
  */
-export function calculateTopicMetrics(videos) {
+export function calculateTopicMetrics(videos, daysBack = 28) {
   if (videos.length === 0) {
     return {
       recent_7d_count: 0,
@@ -154,20 +180,17 @@ export function calculateTopicMetrics(videos) {
   const enrichedVideos = videos.map(calculateVideoMetrics);
 
   // Recent counts
-  const recent_7d_count = countRecentVideos(enrichedVideos, 7);
+  const recent_7d_count  = countRecentVideos(enrichedVideos, 7);
   const recent_28d_count = countRecentVideos(enrichedVideos, 28);
 
   // Views per day stats
   const viewsPerDayValues = enrichedVideos.map(v => v.viewsPerDay);
-  const avg_views_per_day = viewsPerDayValues.reduce((a, b) => a + b, 0) / viewsPerDayValues.length;
+  const avg_views_per_day    = viewsPerDayValues.reduce((a, b) => a + b, 0) / viewsPerDayValues.length;
   const median_views_per_day = percentile(viewsPerDayValues, 50);
 
-  // Outlier detection based on normalized velocity
-  // Step 1: Filter videos with more than 20,000 views (qualified for outlier consideration)
-  const eligibleForOutlier = enrichedVideos.filter(v => v.viewCount >= CONFIG.OUTLIER_MIN_VIEWS);
+  // Outlier detection: videos >20K views, top 25% by normalised velocity
+  const eligibleForOutlier   = enrichedVideos.filter(v => v.viewCount >= CONFIG.OUTLIER_MIN_VIEWS);
   const videos_above_20k_count = eligibleForOutlier.length;
-  
-  // Step 2: Among qualified videos, find top 25% by normalized velocity (true outliers)
   let outlier_video_count = 0;
   if (eligibleForOutlier.length > 0) {
     const velocities = eligibleForOutlier.map(v => v.normalizedVelocity);
@@ -176,16 +199,16 @@ export function calculateTopicMetrics(videos) {
   }
 
   // Cross-creator count (unique channels)
-  const uniqueChannels = new Set(enrichedVideos.map(v => v.channelId));
+  const uniqueChannels   = new Set(enrichedVideos.map(v => v.channelId));
   const cross_creator_count = uniqueChannels.size;
 
-  // Calculate velocity metrics (Option 2 & 3: age distribution + performance trend)
-  const velocity_metrics = calculateVelocityMetrics(enrichedVideos);
+  // Velocity metrics — pass daysBack so buckets scale correctly for 90/180/365d
+  const velocity_metrics = calculateVelocityMetrics(enrichedVideos, daysBack);
 
   return {
     recent_7d_count,
     recent_28d_count,
-    avg_views_per_day: Math.round(avg_views_per_day),
+    avg_views_per_day:    Math.round(avg_views_per_day),
     median_views_per_day: Math.round(median_views_per_day),
     videos_above_20k_count,
     outlier_video_count,
@@ -197,31 +220,49 @@ export function calculateTopicMetrics(videos) {
 }
 
 /**
- * Calculate scores for a topic
- * Each dimension is normalized to 0-50, combined = 0-100
+ * Calculate scores for a topic.
+ * Each dimension is normalised to 0-50, combined = 0-100.
+ *
+ * Trend score formula:
+ *  daysBack ≤ 28 (original): recent_7d×2 + recent_28d
+ *  daysBack > 28 (long window): recent_7d×2 + total_video_count×LONG_WINDOW_TOTAL
+ *    — videos from day 29–365 contribute via total_video_count so sustained
+ *      long-term interest is reflected rather than being invisible to the score.
+ *
+ * @param {object} metrics          - output of calculateTopicMetrics
+ * @param {Array}  allTopicsMetrics - unused, kept for interface compatibility
+ * @param {number} daysBack         - the search window
  */
-export function calculateScores(metrics, allTopicsMetrics = []) {
-  const { recent_7d_count, recent_28d_count, avg_views_per_day, outlier_video_count, cross_creator_count } = metrics;
+export function calculateScores(metrics, allTopicsMetrics = [], daysBack = 28) {
+  const {
+    recent_7d_count, recent_28d_count, total_video_count,
+    avg_views_per_day, cross_creator_count
+  } = metrics;
 
-  // Raw calculations
-  const rawTrendScore = (recent_7d_count * CONFIG.WEIGHTS.RECENT_7D) + recent_28d_count;
-  
-  // Viral score includes:
-  // 1. Outlier videos (high-performing >20K videos)
-  // 2. Creator diversity (more creators = more validation)
-  // 3. Average engagement (views per day)
+  let rawTrendScore;
+  if (daysBack <= 28) {
+    // Original formula — unchanged for 7/14/28d windows
+    rawTrendScore = (recent_7d_count * CONFIG.WEIGHTS.RECENT_7D) + recent_28d_count;
+  } else {
+    // Long window: add full-period volume at a lower weight so sustained topics
+    // score higher than flash-in-the-pan ones, while keeping 7d recency dominant.
+    rawTrendScore =
+      (recent_7d_count * CONFIG.WEIGHTS.RECENT_7D) +
+      (total_video_count * (CONFIG.WEIGHTS.LONG_WINDOW_TOTAL || 0.3));
+  }
+
   const videos_above_20k = metrics.videos_above_20k_count || 0;
-  const rawOutlierScore = 
+  const rawOutlierScore =
     (videos_above_20k * CONFIG.WEIGHTS.OUTLIER_VIDEO) +
     (cross_creator_count * CONFIG.WEIGHTS.CROSS_CREATOR) +
     (avg_views_per_day / 1000);
 
   return {
-    rawTrendScore: Math.round(rawTrendScore * 100) / 100,
+    rawTrendScore:  Math.round(rawTrendScore  * 100) / 100,
     rawOutlierScore: Math.round(rawOutlierScore * 100) / 100,
-    trendScore: 0,  // Will be normalized to 0-50
-    outlierScore: 0,  // Will be normalized to 0-50
-    momentumScore: 0  // Will be sum of both (0-100)
+    trendScore: 0,    // normalised to 0-50 in normalizeScores
+    outlierScore: 0,  // normalised to 0-50
+    momentumScore: 0  // sum of both (0-100)
   };
 }
 

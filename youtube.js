@@ -124,13 +124,16 @@ function extractKeywords(text) {
     .filter(w => w.length >= 2 && !STOP_WORDS.has(w));
 }
 
+// Escape special regex chars in a keyword before inserting into a RegExp.
+function escapeRegExp(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function matchesKeyword(title, kw) {
-  if (kw.length <= 3) {
-    // Short keywords like "EV", "AI", "ICE": word-boundary prevents "every" matching "ev".
-    // Allow common suffixes (s, 's) so "EVs" / "EV's" still match keyword "ev".
-    return new RegExp(`\\b${kw}(?:s|'s)?\\b`, 'i').test(title);
-  }
-  return title.toLowerCase().includes(kw);
+  // Word-boundary matching for ALL keyword lengths prevents false positives such as
+  // "invest" matching "investigation", or "class" matching "classic".
+  // Simple plural / possessive suffixes are allowed for recall (EVs, salary's, etc.).
+  return new RegExp(`\\b${escapeRegExp(kw)}(?:s|'s)?\\b`, 'i').test(title);
 }
 
 /**
@@ -144,21 +147,28 @@ function matchesKeyword(title, kw) {
  *  - 3+ keywords → majority (ceiling of half) must appear.
  */
 export function isRelevantToTopic(title, topic) {
-  const keywords = extractKeywords(topic);
-  if (keywords.length === 0) return true;
+  let keywords = extractKeywords(topic);
+
+  // Fallback: if the topic is entirely stop words (keywords.length === 0), use the
+  // raw non-trivial tokens (≥3 chars) so filtering isn't silently bypassed.
+  if (keywords.length === 0) {
+    keywords = topic.toLowerCase()
+      .split(/[\s\-_/|:,]+/)
+      .map(w => w.replace(/[^a-z0-9\u0900-\u097F]/g, ''))
+      .filter(w => w.length >= 3);
+    if (keywords.length === 0) return true; // nothing meaningful to match against
+  }
 
   const matches = keywords.filter(kw => matchesKeyword(title, kw));
-
   const hasShortKeyword = keywords.some(kw => kw.length <= 3);
 
   if (keywords.length === 1) return matches.length >= 1;
   if (keywords.length === 2) {
     // Short keywords (ev, ai, ice) are too generic alone — require BOTH (AND).
-    // Long domain keywords (salary, management, middle, class) are specific
-    // enough — require at least ONE (OR).
+    // Long domain keywords are specific enough — require at least ONE (OR).
     return hasShortKeyword ? matches.length >= 2 : matches.length >= 1;
   }
-  return matches.length >= Math.ceil(keywords.length / 2);        // majority for 3+
+  return matches.length >= Math.ceil(keywords.length / 2); // majority for 3+
 }
 
 // Fiction / audio-novel signals — these flood search results for many topics
@@ -243,11 +253,35 @@ export class YouTubeClient {
   }
 
   /**
-   * Search for videos matching a query
+   * Search for videos matching a query.
+   *
+   * For short windows (daysBack ≤ 28):
+   *   - order: 'date' (most recent first) — keeps existing behaviour.
+   *   - Single page (50 results max).
+   *
+   * For long windows (daysBack > 28):
+   *   - order: 'relevance' — YouTube spreads results across the full date range
+   *     rather than only returning the newest 50 uploads, which is crucial for
+   *     a representative sample of a 90/180/365-day window.
+   *   - Pagination: up to CONFIG.SEARCH_PAGES_LONG pages (default 2 × 50 = 100
+   *     videos per query). Quota cost: 100 units per page per query.
+   *     e.g. SEARCH_PAGES_LONG=2, 2 queries → 4 search.list calls = 400 units.
+   *
+   * videoDuration API param quirk:
+   *   Combining videoDuration ('short'|'medium'|'long') with a publishedAfter
+   *   date older than ~180 days causes the YouTube API to silently return 0
+   *   results. To avoid this:
+   *   - 'short' type: only pass videoDuration:'short' for daysBack ≤ 28; for
+   *     longer windows drop it and rely on the ≤60s post-filter in fetchQueryData.
+   *   - 'long'  type: never pass videoDuration; post-filtered to >240s instead.
    */
   async searchVideos(query, maxResults, options = { daysBack: 28, contentType: 'all', channelIds: [] }) {
     const channelIds = options.channelIds || [];
-    const resolvedMax = maxResults || (options.daysBack > 28 ? CONFIG.MAX_RESULTS_LONG : CONFIG.MAX_RESULTS_SHORT);
+    const isLongWindow = options.daysBack > 28;
+    const resolvedMax = maxResults || (isLongWindow ? CONFIG.MAX_RESULTS_LONG : CONFIG.MAX_RESULTS_SHORT);
+    const pageCount = isLongWindow ? (CONFIG.SEARCH_PAGES_LONG || 2) : 1;
+    const order = isLongWindow ? 'relevance' : 'date';
+
     const channelKey = channelIds.join(',');
     const cacheKey = `search:${query}:${resolvedMax}:${options.daysBack}d:${options.contentType}:${channelKey}`;
 
@@ -263,11 +297,11 @@ export class YouTubeClient {
       type: 'video',
       part: 'id',
       maxResults: resolvedMax,
-      order: 'date',
+      order,
       publishedAfter: publishedAfter.toISOString()
     };
 
-    // Build list of param sets — one per channel (or just baseParams if no channel filter)
+    // One param set per channel, or just base if no channel filter
     const paramSets = channelIds.length > 0
       ? channelIds.map(id => ({ ...baseParams, channelId: id }))
       : [baseParams];
@@ -276,23 +310,25 @@ export class YouTubeClient {
 
     for (const params of paramSets) {
       try {
-        if (options.contentType === 'short') {
-          const res = await this.apiGet(`${this.baseURL}/search`, { ...params, videoDuration: 'short' });
-          allVideoIds.push(...(res.data.items || []).map(i => i.id.videoId));
+        // Build the per-request params.
+        // Short form: add videoDuration:'short' only for ≤28d windows to avoid the
+        // silent-0 quirk when combining videoDuration + old publishedAfter.
+        const searchParams = (options.contentType === 'short' && !isLongWindow)
+          ? { ...params, videoDuration: 'short' }
+          : { ...params };
+        // Long form: never add videoDuration — post-filtered to >240s in fetchQueryData.
 
-        } else if (options.contentType === 'long') {
-          // Do NOT use videoDuration API parameter for Long Form — combining
-          // videoDuration:'medium'/'long' with a publishedAfter > ~180 days
-          // causes the YouTube API to silently return 0 results (API quirk).
-          // Instead fetch without duration filter and post-filter by actual
-          // contentDetails.duration (>4 min) in fetchQueryData.
-          const res = await this.apiGet(`${this.baseURL}/search`, params);
-          allVideoIds.push(...(res.data.items || []).map(i => i.id.videoId));
-
-        } else {
-          const res = await this.apiGet(`${this.baseURL}/search`, params);
-          allVideoIds.push(...(res.data.items || []).map(i => i.id.videoId));
+        // Paginate for long windows to sample the full date range.
+        let pageToken = null;
+        for (let page = 0; page < pageCount; page++) {
+          const pageParams = pageToken ? { ...searchParams, pageToken } : searchParams;
+          const res = await this.apiGet(`${this.baseURL}/search`, pageParams);
+          const items = res.data.items || [];
+          allVideoIds.push(...items.map(i => i.id.videoId));
+          pageToken = res.data.nextPageToken || null;
+          if (!pageToken) break; // fewer results available than expected
         }
+
       } catch (error) {
         console.error(`Error on search for query "${query}" (params: ${JSON.stringify(params)}):`, error.message);
         // Continue to next param set — don't abort the whole query

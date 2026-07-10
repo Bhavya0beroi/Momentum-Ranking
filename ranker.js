@@ -53,8 +53,8 @@ export async function processTopic(topic, youtubeClient, options = { daysBack: 2
   const filteredVideos = noFiction.filter(v => isRelevantToTopic(v.title, topic));
   console.log(`  └─ After relevance filter: ${filteredVideos.length}`);
 
-  // Step 4: Calculate metrics
-  const metrics = calculateTopicMetrics(filteredVideos);
+  // Step 4: Calculate metrics — pass daysBack so velocity buckets scale correctly
+  const metrics = calculateTopicMetrics(filteredVideos, options.daysBack);
   
   // Log velocity metrics
   if (metrics.velocity_metrics) {
@@ -62,8 +62,8 @@ export async function processTopic(topic, youtubeClient, options = { daysBack: 2
     console.log(`  └─ Velocity: ${vm.trend_signal.toUpperCase()} (freshness: ${vm.freshness_score}%, ratio: ${vm.velocity_ratio}x)`);
   }
   
-  // Step 5: Calculate scores
-  const scores = calculateScores(metrics);
+  // Step 5: Calculate scores — pass daysBack so long-window trend score uses full count
+  const scores = calculateScores(metrics, [], options.daysBack);
 
   // Step 6: Get top videos — return up to 20, capped at 28d window for display
   const topVideosDays = Math.min(options.daysBack, 28);
