@@ -1,6 +1,6 @@
 import { expandTopic } from './queries.js';
 import { calculateTopicMetrics, calculateScores, normalizeScores, getTopVideos, getOutlierVideos } from './scoring.js';
-import { isAllowedLanguage, isRelevantToTopic } from './youtube.js';
+import { isAllowedLanguage, isRelevantToTopic, isFictionContent } from './youtube.js';
 
 /**
  * Deduplicate videos by videoId
@@ -45,8 +45,12 @@ export async function processTopic(topic, youtubeClient, options = { daysBack: 2
   const langFiltered = uniqueVideos.filter(v => isAllowedLanguage(v.title));
   console.log(`  └─ After language filter: ${langFiltered.length}`);
 
-  // Step 3b: Relevance filter — title must contain at least one keyword from topic
-  const filteredVideos = langFiltered.filter(v => isRelevantToTopic(v.title, topic));
+  // Step 3b: Fiction / audio-novel filter — remove storytelling content
+  const noFiction = langFiltered.filter(v => !isFictionContent(v.title));
+  console.log(`  └─ After fiction filter: ${noFiction.length}`);
+
+  // Step 3c: Relevance filter — title must contain at least one keyword from topic
+  const filteredVideos = noFiction.filter(v => isRelevantToTopic(v.title, topic));
   console.log(`  └─ After relevance filter: ${filteredVideos.length}`);
 
   // Step 4: Calculate metrics

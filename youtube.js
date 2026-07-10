@@ -143,6 +143,26 @@ export function isRelevantToTopic(title, topic) {
   return matches.length >= Math.ceil(keywords.length / 2);        // majority for 3+
 }
 
+// Fiction / audio-novel signals — these flood search results for many topics
+// (especially relationship/social topics) and are never trend-signal content.
+const FICTION_SIGNALS = [
+  'novel', 'audio novel', 'audiobook', 'audio book', 'audio story',
+  'rude hero', 'possessive', 'romantic novel', 'love story', 'love novel',
+  'urdu novel', 'hindi novel', 'episode', 'ep 7', 'ep 8', 'ep 9',
+  'part 1', 'part 2', 'part 3', 'reborn', 'rebirth', 'she reborn',
+  'complete novel', 'full novel', 'natak', 'serial', 'drama episode',
+  'web series episode', 'force marriage', 'after marriage novel',
+];
+
+/**
+ * Returns true when the title looks like fiction / audio-novel content
+ * that should always be excluded from trend results.
+ */
+export function isFictionContent(title) {
+  const lower = title.toLowerCase();
+  return FICTION_SIGNALS.some(sig => lower.includes(sig));
+}
+
 // ---------------------------------------------------------------------------
 
 /**
@@ -225,18 +245,13 @@ export class YouTubeClient {
           allVideoIds.push(...(res.data.items || []).map(i => i.id.videoId));
 
         } else if (options.contentType === 'long') {
-          // Fetch medium (4–20 min) and long (>20 min) independently
-          // so a transient failure in one bucket doesn't lose the other's results.
-          // Quota / key errors are re-thrown so the caller can surface them.
-          for (const dur of ['medium', 'long']) {
-            try {
-              const res = await this.apiGet(`${this.baseURL}/search`, { ...params, videoDuration: dur });
-              allVideoIds.push(...(res.data.items || []).map(i => i.id.videoId));
-            } catch (e) {
-              if (e.message.includes('quota') || e.message.includes('API key')) throw e;
-              console.error(`Error fetching ${dur}-duration videos for "${query}":`, e.message);
-            }
-          }
+          // Do NOT use videoDuration API parameter for Long Form — combining
+          // videoDuration:'medium'/'long' with a publishedAfter > ~180 days
+          // causes the YouTube API to silently return 0 results (API quirk).
+          // Instead fetch without duration filter and post-filter by actual
+          // contentDetails.duration (>4 min) in fetchQueryData.
+          const res = await this.apiGet(`${this.baseURL}/search`, params);
+          allVideoIds.push(...(res.data.items || []).map(i => i.id.videoId));
 
         } else {
           const res = await this.apiGet(`${this.baseURL}/search`, params);
@@ -346,13 +361,20 @@ export class YouTubeClient {
       subscriberCount: channels[video.channelId]?.subscriberCount || 1
     }));
 
-    // Step 5: For Shorts, post-filter to ≤60 s.
-    // The YouTube search API's videoDuration:'short' returns everything <4 min;
-    // actual YouTube Shorts are ≤60 s.
+    // Step 5: Duration post-filters using contentDetails.duration.
     if (options.contentType === 'short') {
+      // videoDuration:'short' API param returns everything <4 min;
+      // real YouTube Shorts are ≤60 s — filter down.
       enriched = enriched.filter(v => {
         const secs = parseDurationSeconds(v.duration);
         return secs === null || secs <= 60;
+      });
+    } else if (options.contentType === 'long') {
+      // We skipped the videoDuration API param to avoid the 1yr empty-results
+      // quirk, so filter here: keep only videos longer than 4 minutes (240 s).
+      enriched = enriched.filter(v => {
+        const secs = parseDurationSeconds(v.duration);
+        return secs === null || secs > 240;
       });
     }
 
