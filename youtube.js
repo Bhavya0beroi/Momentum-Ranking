@@ -108,8 +108,9 @@ function extractKeywords(text) {
 
 function matchesKeyword(title, kw) {
   if (kw.length <= 3) {
-    // Short keywords like "EV", "AI", "ICE" — word-boundary so "even" doesn't match "ev"
-    return new RegExp(`\\b${kw}\\b`, 'i').test(title);
+    // Short keywords like "EV", "AI", "ICE": word-boundary prevents "every" matching "ev".
+    // Allow common suffixes (s, 's) so "EVs" / "EV's" still match keyword "ev".
+    return new RegExp(`\\b${kw}(?:s|'s)?\\b`, 'i').test(title);
   }
   return title.toLowerCase().includes(kw);
 }
@@ -130,8 +131,15 @@ export function isRelevantToTopic(title, topic) {
 
   const matches = keywords.filter(kw => matchesKeyword(title, kw));
 
+  const hasShortKeyword = keywords.some(kw => kw.length <= 3);
+
   if (keywords.length === 1) return matches.length >= 1;
-  if (keywords.length === 2) return matches.length >= 2;          // AND for pairs
+  if (keywords.length === 2) {
+    // Short keywords (ev, ai, ice) are too generic alone — require BOTH (AND).
+    // Long domain keywords (salary, management, middle, class) are specific
+    // enough — require at least ONE (OR).
+    return hasShortKeyword ? matches.length >= 2 : matches.length >= 1;
+  }
   return matches.length >= Math.ceil(keywords.length / 2);        // majority for 3+
 }
 
@@ -199,7 +207,7 @@ export class YouTubeClient {
       type: 'video',
       part: 'id',
       maxResults: resolvedMax,
-      order: 'relevance',
+      order: 'date',
       publishedAfter: publishedAfter.toISOString()
     };
 
